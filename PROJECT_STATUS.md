@@ -37,13 +37,13 @@
 | 字段 | 当前值 |
 |---|---|
 | Agent/负责人 | ZCode（用户 Holmes 授权） |
-| 当前任务 | T000 收尾：GitHub 安全同步（已 DONE，`main` @ `237a337`） |
-| 当前模块 | `M00-foundation-contracts`（Spec 编写阶段） |
-| 分支 | `main`（已与 `origin/main` 同步：`237a337`） |
-| 状态 | `DONE`（T000 收尾部分）；`M00` 仍为 `IN_PROGRESS` |
+| 当前任务 | M00 Spec 编写：`docs/specs/SPEC-M00-foundation-contracts.md`（待用户审阅） |
+| 当前模块 | `M00-foundation-contracts`（Spec 编写阶段，未开始编码） |
+| 分支 | `feat/M00-foundation-contracts`（基于 `origin/main` @ `ddd16be`） |
+| 状态 | `IN_PROGRESS`（Spec 待审阅；批准前不编码） |
 | 开始时间 | 2026-09-19 |
-| 计划修改文件 | `PROJECT_STATUS.md`、`tasks/todo.md`、`docs/decisions/T000-产品边界与技术决策建议.md` |
-| 下一检查点 | M00 Spec 编写 → 用户审阅 `SPEC-M00-foundation-contracts.md` → 启动 T001–T005 Spike |
+| 计划修改文件 | `docs/specs/SPEC-M00-foundation-contracts.md`（新建）、`PROJECT_STATUS.md` |
+| 下一检查点 | 用户审阅并批准 M00 Spec → 安装 pnpm/uv/Rust 工具链 → 执行 T010（Monorepo 与 CI） |
 
 ## 4. 模块状态总表
 
@@ -114,8 +114,10 @@
 - 源码：尚未创建。
 - 测试：尚未创建。
 - CI：尚未创建。
+- 已就绪的 Spec：[`docs/specs/SPEC-M00-foundation-contracts.md`](docs/specs/SPEC-M00-foundation-contracts.md)（v1.0-draft，**待用户审阅**）。
+- 本机工具链基线（2026-09-19 只读核对）：Git 2.51.0.windows.1（`core.autocrlf` 生效，工作区 CRLF/仓库 LF，待 `.gitattributes` 统一）；Node v22.20.0 ✅；npm 10.9.3（仅引导）；**pnpm 未安装**；系统 Python 3.13.7（项目固定 3.12，由 uv 管理，**不使用系统解释器**）；**uv 未安装**；**Rust/Cargo 未安装**。
 - 已有规划文档：统一方案、实施计划、任务清单和两份历史方案。
-- 未授权事项（勿自行执行）：分支保护、PR 创建、`gh` CLI 安装与认证、Actions 首次运行。
+- 未授权事项（勿自行执行）：分支保护、PR 创建、`gh` CLI 安装与认证、Actions 首次运行、安装依赖与生成脚手架（须在 M00 Spec 获批后）。
 
 ## 9. 发现的冲突
 
@@ -160,6 +162,30 @@
 ```
 
 ## 11. 交接记录
+
+### 2026-09-19 — M00 Spec 编写（READY_FOR_REVIEW）
+
+- Agent/负责人：ZCode（用户 Holmes 审阅）
+- 状态：READY_FOR_REVIEW
+- 分支：`feat/M00-foundation-contracts`（基于 `origin/main` @ `ddd16be`）
+- Commit/PR：本分支提交；未创建 PR（用户未授权）
+- 完成内容：
+  - 新建 `docs/specs/SPEC-M00-foundation-contracts.md`（v1.0-draft），覆盖用户要求的全部范围：Monorepo 目录结构、三层边界与 8 条强制规则、pnpm/uv/Cargo 版本与锁文件策略、lint/typecheck/test/build/contracts 目标命令、GitHub Actions 最小 CI（5 个 job、Windows runner、零密钥）、`.env.example` 与密钥/本地数据安全边界、10 条可执行验收标准、非目标清单。
+  - 显式记录与统一方案 §22 的 3 处差异（`uv.lock` 位置、`Cargo.lock`、`.gitattributes`/`.node-version`/`.npmrc`），未静默选择。
+  - 列出 6 项待确认决策（D-1～D-6：mypy、契约生成器、secret 扫描 Action、`uv.lock` 位置、Rust 工具链、Tauri 版本锁定）。
+- 未完成内容：Spec 未获批准，未安装任何依赖，未生成 Tauri 脚手架，未开始 T001。
+- 关键文件：`docs/specs/SPEC-M00-foundation-contracts.md`（新建）、`PROJECT_STATUS.md`、`tasks/todo.md`
+- 接口/Schema 变化：Spec 中定义契约骨架（`envelope`、`error`、`error-codes`、`job`、`citation`、`version`），**尚未创建实际文件**
+- 数据迁移：无
+- ADR/决策：D-2 若偏离本 Spec 的契约生成器方案，需先写 ADR-008
+- 验证命令与结果：
+  - 只读核对本机工具链 → Node v22.20.0 / npm 10.9.3 / Python 3.13.7 存在；pnpm / uv / cargo 缺失（已记入 Spec §3 与状态文件 §8）
+  - `git log --oneline -1` → `ddd16be`
+  - 本模块无代码，故无 lint/test/build 结果可报告
+- Eval/性能/Token 结果：不适用
+- 已知问题与风险：见 Spec §13；最前置的风险是本机缺 pnpm/uv/Rust，T010 第一动作是安装并固化版本；`.gitattributes` 必须在契约漂移检查之前落地，否则 CRLF 会导致假失败。
+- 环境或密钥要求：无需任何密钥；Spec 明确 CI 不依赖 secret，缺 key 时相关测试必须 skip。
+- 下一个 Agent 应先做：等待用户审阅 M00 Spec 与 D-1～D-6；批准后执行 T010，第一步安装并锁定 pnpm/uv/Rust。
 
 ### 2026-09-19 — T000 收尾：GitHub 安全初始化与首次同步（DONE）
 

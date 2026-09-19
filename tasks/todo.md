@@ -1,6 +1,8 @@
 # 英语老师 AI Agent 桌面客户端任务清单
 
-> 当前状态：T000 决策已完成（Q1–Q8 决策见 `docs/decisions/T000-产品边界与技术决策建议.md`）；远程连接待确认后执行；T001–T005 待执行。先完整阅读 [`PROJECT_STATUS.md`](../PROJECT_STATUS.md)，再完成并评审 T001–T005；未通过架构检查点前不要开始大规模实现。每完成一个模块或垂直切片，必须同步更新 `PROJECT_STATUS.md`。
+> 当前状态：T000 已完成（含 2026-09-19 GitHub 安全同步，`main` @ `ddd16be`）；M00 Spec 草案已写入 [`docs/specs/SPEC-M00-foundation-contracts.md`](../docs/specs/SPEC-M00-foundation-contracts.md)，**待用户审阅**；T001–T005 待执行。先完整阅读 [`PROJECT_STATUS.md`](../PROJECT_STATUS.md)，再完成并评审 T001–T005；未通过架构检查点前不要开始大规模实现。每完成一个模块或垂直切片，必须同步更新 `PROJECT_STATUS.md`。
+>
+> 门控：M00 Spec 获批前，不安装依赖、不生成 Tauri 脚手架、不开始 T010。
 
 ## Phase 0：风险验证
 
