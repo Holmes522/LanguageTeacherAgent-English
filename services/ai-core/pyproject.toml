@@ -1,0 +1,59 @@
+[project]
+name = "engm-ai-core"
+version = "0.0.0"
+description = "EngMentor AI Core 侧车进程（M00 骨架：只有健康检查，无业务能力）"
+readme = "README.md"
+requires-python = ">=3.12,<3.13"
+dependencies = [
+    "pydantic>=2.9",
+    # 契约包以 path 依赖消费（SPEC-M00 §6.1）。它是可安装包，不是路径技巧：
+    # 由 uv sync 装进本项目的虚拟环境，业务代码直接 from engm_contracts.v1 import ...
+    "engm-contracts",
+]
+
+[tool.uv.sources]
+engm-contracts = { path = "../../packages/contracts/python", editable = true }
+
+[dependency-groups]
+dev = [
+    # 契约三方一致性测试的判定依据（packages/contracts/python/tests 在本环境里运行）。
+    # 放在这里而不是契约包自己的 dev 组：那会多出一个 uv 项目与 lockfile，与
+    # 「每个安装边界只有一个权威 lockfile」冲突。
+    "jsonschema>=4.23",
+    "mypy>=1.14",
+    "pytest>=8.3",
+    "ruff>=0.9",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/english_teacher"]
+
+[tool.uv]
+# 以可编辑方式安装本包，使 `english_teacher` 在虚拟环境中可被导入与类型检查，
+# 而不是依赖 PYTHONPATH（SPEC-M00 §6.1）。
+package = true
+
+[tool.ruff]
+target-version = "py312"
+line-length = 100
+src = ["src", "tests"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "SIM"]
+
+[tool.pytest.ini_options]
+# 契约 Python 侧正反例与 ai-core 自己的测试同属一个测试集（SPEC-M00 §7 的 test:py 约定）。
+testpaths = ["tests", "../../packages/contracts/python/tests"]
+addopts = "-q"
+
+[tool.mypy]
+python_version = "3.12"
+strict = true
+plugins = ["pydantic.mypy"]
+# mypy 视野覆盖生成物（SPEC-M00 §6.1）：engm_contracts 是生成代码，必须一起被严格检查，
+# 而不是躲进"第三方包"豁免里。
+files = ["src", "tests", "../../packages/contracts/python/src/engm_contracts"]

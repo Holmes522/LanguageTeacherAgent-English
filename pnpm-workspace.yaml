@@ -1,0 +1,26 @@
+# pnpm workspace 成员（SPEC-M00 §4）。
+#
+# 只包含两个边界：前端/Tauri 桌面壳与共享契约包。
+# Python 侧（services/ai-core）属于 uv 的安装边界，不出现在这里 —— 每个边界只有一个权威 lockfile。
+packages:
+  - 'apps/*'
+  - 'packages/*'
+
+# ---- 依赖安装期脚本（pnpm 12 默认不允许任何依赖执行安装脚本）----
+#
+# esbuild 的 postinstall 在 Windows 上只做平台二进制的校验/链接，而该二进制由可选依赖
+# @esbuild/win32-x64 直接提供。这里选 false：安装期不执行第三方代码，少一个供应链执行面。
+# 正确性由 `pnpm build:web` 实测保证，而不是靠"应该没问题"的假设。
+#
+# 若要改成 true，必须在同一次改动中写明理由，并重新验证构建仍然通过。
+allowBuilds:
+  esbuild: false
+
+# ---- 最小发布年龄例外（pnpm 12 的供应链保护）----
+#
+# pnpm 默认拒绝安装发布时间过短的新版本，以降低抢注/投毒风险。
+# 下列包被固定到精确版本且发布较新，因此登记为例外。
+# 新增例外等于放弃这一层保护，必须是有意识的决定，不要静默累积。
+minimumReleaseAgeExclude:
+  - '@types/node@26.6.2'
+  - eslint@10.11.0

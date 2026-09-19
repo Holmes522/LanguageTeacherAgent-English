@@ -1,0 +1,48 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://engmentor.local/contracts/v1/job.schema.json",
+  "title": "Job",
+  "description": "长任务状态与进度（SPEC-M00 §5.2 / B-7）。长任务先返回 jobId，进度通过事件推送；cancelRequested 表示调用方已请求取消，不代表任务已停止——真正的终态是 status 变为 cancelled。",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["jobId", "status", "progress", "cancelRequested"],
+  "properties": {
+    "jobId": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128,
+      "description": "任务标识。同一 jobId 的重复请求必须幂等（B-7）。"
+    },
+    "status": {
+      "type": "string",
+      "description": "任务状态。pending/running 为进行中，succeeded/failed/cancelled 为终态。",
+      "enum": ["pending", "running", "succeeded", "failed", "cancelled"]
+    },
+    "progress": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["completed", "total"],
+      "properties": {
+        "completed": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "已完成的工作单元数。"
+        },
+        "total": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "总工作单元数。0 表示总数仍未知，而不是\"没有工作\"。"
+        },
+        "message": {
+          "type": "string",
+          "maxLength": 200,
+          "description": "给用户看的阶段说明。不得包含用户正文。"
+        }
+      }
+    },
+    "cancelRequested": {
+      "type": "boolean",
+      "description": "调用方是否已请求取消。"
+    }
+  }
+}

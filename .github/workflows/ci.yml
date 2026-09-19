@@ -1,0 +1,277 @@
+# SPEC-M00 §8 的最小 CI：Windows runner、零密钥依赖、三方 Action 全部固定到完整 commit SHA。
+#
+# 为什么所有 Action 都写 40 位 SHA 而不是 @v7：浮动 tag 可以被上游移动，也能被账号
+# 接管后重新指向恶意提交；固定 SHA 让"上游变了"变成一次显式的、可评审的改动。
+# 每条 uses 后面的注释标出该 SHA 对应的 tag 与来源仓库，便于人工核对与升级。
+# 例外：gitleaks 不在 Action 里，改为按发布方 checksums.txt 校验后自管安装（见 ADR-008 与 secrets job）。
+#
+# contracts job（T011 补齐）：它需要 pnpm contracts:generate 与 pnpm test:contracts，
+# 两者在 T011 之前不存在，因此 T010-B 明确把该 job 推迟到 T011。
+# 从 T011 起，契约漂移与三方一致性都在 CI 里有真实门禁。
+
+name: CI
+
+# 触发策略：只在"关键时刻"跑，不在开发过程中每次提交都跑。
+# 用户 2026-09-19 要求：开发期间不需要每个提交都触发 CI，只在关键节点跑。
+#
+# 三个关键时刻：
+#   1. 你主动触发 —— Actions 页面 → 本工作流 → Run workflow（`workflow_dispatch`）。
+#      注意：**该触发器需要本文件存在于默认分支才会出现在列表里**。当前工作流只在功能分支上，
+#      所以现在点不到它；把工作流合进 main 之后即可用。
+#   2. 合并进 main（`push: main`）—— 每个垂直切片合并时跑一次，验证 main 仍可发布。
+#   3. 把一个 draft PR 标记为 ready for review（`ready_for_review`）——
+#      这是最贴合当前工作方式的手动闸门：平时在 draft 上随便推，想验时点一下 Ready。
+#
+# 特别注意：这里**没有**列 `synchronize`，所以给已经 ready 的 PR 继续推提交不会再触发；
+# 想重跑就转回 draft 再标一次 Ready，或用 Run workflow。
+# 也因为没有 `opened`：**非 draft 的 PR 不会自动触发**（那是刻意的，但要知道）。
+#
+# 纯文档改动一律不触发：`.md`、`docs/**`、`tasks/**` 在 paths-ignore 里。
+# 本仓库相当一部分提交是状态/规格文档，让它们触发一次 5 分钟的运行没有意义。
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+  pull_request:
+    types: [ready_for_review]
+    paths-ignore:
+      - '**.md'
+      - 'docs/**'
+      - 'tasks/**'
+      - '.gitattributes'
+      - '.gitignore'
+
+# 最小权限：CI 只读仓库内容。secrets job 的 GITHUB_TOKEN 因此也无法评论 PR，
+# 这与 D-3"禁用 PR 评论"的要求互为第二层保障。
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  # 三个版本与仓库内的固定文件保持一致；gitleaks 的版本还被
+  # scripts/check-secrets.mjs 逐字断言，改这里而不同步脚本会让本机扫描拒绝执行。
+  PNPM_VERSION: 12.4.2
+  UV_VERSION: 0.12.17
+  GITLEAKS_VERSION: 8.30.1
+
+jobs:
+  web:
+    name: web (eslint / tsc / vitest / vite build)
+    runs-on: windows-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
+        with:
+          version: ${{ env.PNPM_VERSION }}
+
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version-file: .node-version
+          cache: pnpm
+
+      - name: 安装依赖（locked，不允许改写 lockfile）
+        run: pnpm install --frozen-lockfile
+
+      - name: ESLint（含 WebView 网络边界规则）
+        run: pnpm lint:web
+
+      - name: 类型检查
+        run: pnpm typecheck:web
+
+      - name: 单元测试
+        run: pnpm test:web
+
+      - name: 前端构建
+        run: pnpm build:web
+
+      - name: 能力清单审计（SPEC-M00 §5.4 第 3 层）
+        run: pnpm check:capabilities
+
+  python:
+    name: python (ruff / mypy / pytest)
+    runs-on: windows-latest
+    timeout-minutes: 20
+    defaults:
+      run:
+        # 所有 Python 工具都必须在项目目录下执行：uv run --project 会把 cwd 留在仓库根，
+        # mypy 因此读不到 [tool.mypy]，pytest 会忽略 [tool.pytest.ini_options]。
+        # 详见 SPEC-M00 §7 与 services/ai-core/README.md。
+        working-directory: services/ai-core
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: astral-sh/setup-uv@c771a70e6277c0a99b617c7a806ffedaca235ff9 # v9.0.0
+        with:
+          version: ${{ env.UV_VERSION }}
+          enable-cache: true
+          cache-dependency-glob: services/ai-core/uv.lock
+
+      - name: 安装锁定依赖
+        run: uv sync --locked
+
+      - name: 断言 uv.lock 与 pyproject.toml 一致
+        run: uv lock --check
+
+      - name: 确认实际解释器版本（.python-version 生效）
+        run: uv run python -V
+
+      - name: Ruff
+        run: uv run ruff check .
+
+      - name: mypy（严格）
+        run: uv run mypy
+
+      - name: pytest
+        run: uv run pytest
+
+  rust:
+    name: rust (fmt / clippy / test / build)
+    runs-on: windows-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
+        with:
+          version: ${{ env.PNPM_VERSION }}
+
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version-file: .node-version
+          cache: pnpm
+
+      # 本仓库的 Cargo.lock 在 apps/desktop/src-tauri 下，rust-cache 默认只看仓库根，
+      # 因此必须显式告知工作区位置，否则缓存会静默不生效。
+      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
+        with:
+          workspaces: apps/desktop/src-tauri
+
+      - name: 安装 Node 依赖（Rust 侧需要先有前端产物）
+        run: pnpm install --frozen-lockfile
+
+      - name: 构建前端产物
+        run: pnpm build:web
+
+      - name: cargo fmt + clippy
+        run: pnpm lint:rust
+
+      - name: cargo test
+        run: cargo test --manifest-path apps/desktop/src-tauri/Cargo.toml --locked
+
+      - name: Tauri 骨架构建
+        run: pnpm build:rust
+
+  contracts:
+    name: contracts (drift / three-way consistency)
+    runs-on: windows-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          # 漂移检查用 git diff 判断，需要完整工作树但不改远端，凭据也不需要留下。
+          persist-credentials: false
+
+      - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
+        with:
+          version: ${{ env.PNPM_VERSION }}
+
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version-file: .node-version
+          cache: pnpm
+
+      # Python 侧生成器（datamodel-code-generator）由 uv 以 uvx 方式运行，版本写在
+      # packages/contracts/scripts/generate.mjs 里，不由 runner 的 Python 环境决定。
+      - uses: astral-sh/setup-uv@c771a70e6277c0a99b617c7a806ffedaca235ff9 # v9.0.0
+        with:
+          version: ${{ env.UV_VERSION }}
+          enable-cache: true
+          cache-dependency-glob: services/ai-core/uv.lock
+
+      # 三方一致性里的 Rust 一方需要编译，缓存与 rust job 用同一套配置。
+      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
+        with:
+          workspaces: apps/desktop/src-tauri
+
+      - name: 安装 Node 依赖
+        run: pnpm install --frozen-lockfile
+
+      - name: 安装 Python 依赖（locked）
+        run: uv sync --locked --project services/ai-core
+
+      - name: 重新生成契约产物
+        run: pnpm contracts:generate
+
+      - name: 断言生成物与 schema 同步（漂移即失败）
+        # 这里刻意用 git diff --exit-code 而不是 contracts:check：contracts:check 自己会先
+        # 重新生成再比对，等于把上面的步骤重跑一遍；CI 里要的是"生成后的工作树必须干净"。
+        run: git diff --exit-code --stat -- packages/contracts/src/generated packages/contracts/python/src/engm_contracts packages/contracts/schema-manifest.json
+
+      - name: 三方一致性（TS / Python / Rust 判定必须逐条相同）
+        run: pnpm test:contracts
+
+  secrets:
+    name: secrets (gitleaks / 忽略规则)
+    runs-on: windows-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          # 密钥扫描必须看到完整历史：只扫最新一次提交会漏掉"曾经提交过、后来删掉"的密钥，
+          # 那种情况下密钥仍然存在于历史里，必须轮换。
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: 敏感路径的忽略规则（AC-10 后半，只需要 Node）
+        run: node scripts/check-ignored.mjs
+
+      # 为什么不用 gitleaks-action：v3.0.0 的安装逻辑按 .tar.gz 拼接 Windows 下载地址，
+      # 而 gitleaks 8.30.1 的 Windows 资产是 .zip（darwin/linux 才是 tar.gz），必然 404；
+      # 该 Action 的 action.yml 没有任何 inputs，无法指定已安装的二进制或修正资源名。
+      # 首次真实运行（run #1）就撞上这个问题。改为自管下载 + 校验发布方 checksums.txt，
+      # 既保住"CI 与本机同版本"这一硬要求，又对真正执行扫描的二进制做了哈希校验，
+      # 同时也去掉了 gitleaks-action 的 EULA 依赖（CLI 是 MIT）。详见 ADR-008。
+      - name: 安装固定版本的 gitleaks（校验发布方 SHA-256）
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $version = $env:GITLEAKS_VERSION
+          $asset = "gitleaks_${version}_windows_x64.zip"
+          $base = "https://github.com/gitleaks/gitleaks/releases/download/v$version"
+          $dir = Join-Path $env:RUNNER_TEMP 'gitleaks'
+          New-Item -ItemType Directory -Force -Path $dir | Out-Null
+
+          $zip = Join-Path $dir $asset
+          $sums = Join-Path $dir 'checksums.txt'
+          Invoke-WebRequest -Uri "$base/$asset" -OutFile $zip
+          Invoke-WebRequest -Uri "$base/gitleaks_${version}_checksums.txt" -OutFile $sums
+
+          # checksums.txt 每行形如 "<sha256>  <文件名>"
+          $pattern = ([regex]::Escape($asset) + '$')
+          $line = Get-Content $sums | Where-Object { $_ -match $pattern } | Select-Object -First 1
+          if (-not $line) { throw "checksums.txt 中没有 $asset，拒绝使用未经校验的下载物。" }
+          $expected = ($line -split '\s+')[0].ToLower()
+          $actual = (Get-FileHash -Path $zip -Algorithm SHA256).Hash.ToLower()
+          if ($actual -ne $expected) {
+            throw "gitleaks 校验和不匹配：expected=$expected actual=$actual"
+          }
+          Write-Host "gitleaks $version 校验和匹配：$actual"
+
+          Expand-Archive -Path $zip -DestinationPath $dir -Force
+          Add-Content -Path $env:GITHUB_PATH -Value $dir
+          & (Join-Path $dir 'gitleaks.exe') version
+
+      - name: gitleaks 扫描（全量历史，与本机同一命令）
+        # 与本机 scripts/check-secrets.mjs 使用逐字相同的调用，因此两边的结论可比。
+        run: gitleaks git --config .gitleaks.toml --no-banner --redact --exit-code 1

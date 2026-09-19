@@ -1,0 +1,49 @@
+{
+  "$comment": "由 packages/contracts/scripts/generate.mjs 生成。Rust 侧在测试中用它断言 include_str! 嵌入的集合与契约包完全一致（SPEC-M00 §5.3 第 6 条 / AC-8）。改动 schema 后必须重新生成本文件。",
+  "contractVersion": "v1",
+  "schemaCount": 6,
+  "entries": [
+    {
+      "file": "citation.schema.json",
+      "path": "packages/contracts/schema/v1/citation.schema.json",
+      "id": "https://engmentor.local/contracts/v1/citation.schema.json",
+      "sha256": "dc3083e7ab0723f83d820a481b60cd536b0590e6be1dd56dec2c7072611e97a8",
+      "bytes": 1533
+    },
+    {
+      "file": "envelope.schema.json",
+      "path": "packages/contracts/schema/v1/envelope.schema.json",
+      "id": "https://engmentor.local/contracts/v1/envelope.schema.json",
+      "sha256": "8ed1ae71a444991154439b0e623b0ec870f8d85db8427e96f97e576e5e002948",
+      "bytes": 4392
+    },
+    {
+      "file": "error-codes.json",
+      "path": "packages/contracts/schema/v1/error-codes.json",
+      "id": "https://engmentor.local/contracts/v1/error-codes.json",
+      "sha256": "aff857b23018343440a2242043a43fdd080d36fbe657a3df1bac1cfc88c539cf",
+      "bytes": 1551
+    },
+    {
+      "file": "error.schema.json",
+      "path": "packages/contracts/schema/v1/error.schema.json",
+      "id": "https://engmentor.local/contracts/v1/error.schema.json",
+      "sha256": "c31d6898285e6141e1a58b3e44e10d643b90f018af0f3dcfc1da612074f4abce",
+      "bytes": 1407
+    },
+    {
+      "file": "job.schema.json",
+      "path": "packages/contracts/schema/v1/job.schema.json",
+      "id": "https://engmentor.local/contracts/v1/job.schema.json",
+      "sha256": "c42884796216d9e188a33f2280a6e1d1776073c76e5198b4ef385c14fda8e3e7",
+      "bytes": 1728
+    },
+    {
+      "file": "version.schema.json",
+      "path": "packages/contracts/schema/v1/version.schema.json",
+      "id": "https://engmentor.local/contracts/v1/version.schema.json",
+      "sha256": "6c74224593c7674fdcb72d0bc664c18a785ff885dc4c1f6440b3d8712ba087cf",
+      "bytes": 1207
+    }
+  ]
+}

@@ -1,0 +1,33 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://engmentor.local/contracts/v1/error-codes.json",
+  "title": "ContractErrorCodes",
+  "description": "错误码注册表 —— 契约错误码的唯一来源。命名空间为 ENGM.<DOMAIN>.<REASON>（SPEC-M00 §5.2）。M00 只固化 4 个码；新增域必须在对应模块的 Spec 中说明后再加入本表。generate.mjs 会断言本表的码集合与 error.schema.json 中 code 的 enum 完全一致，因此两处不可能悄悄漂移。",
+  "namespace": "ENGM",
+  "codes": {
+    "ENGM.CONTRACT.INVALID_INPUT": {
+      "domain": "CONTRACT",
+      "reason": "INVALID_INPUT",
+      "retryable": false,
+      "description": "入站负载未通过基础校验（类型错误或缺少必填字段）。"
+    },
+    "ENGM.CONTRACT.SCHEMA_INVALID": {
+      "domain": "CONTRACT",
+      "reason": "SCHEMA_INVALID",
+      "retryable": false,
+      "description": "负载未通过对应 JSON Schema 校验。错误详情只含 schema $id、实例路径与失败关键字，不含用户正文。"
+    },
+    "ENGM.CONTRACT.VERSION_MISMATCH": {
+      "domain": "CONTRACT",
+      "reason": "VERSION_MISMATCH",
+      "retryable": false,
+      "description": "主进程与 Sidecar 上报的契约版本不一致，拒绝服务而不是继续运行。"
+    },
+    "ENGM.INTERNAL.UNEXPECTED": {
+      "domain": "INTERNAL",
+      "reason": "UNEXPECTED",
+      "retryable": false,
+      "description": "未预期的内部错误。不得用于掩盖业务校验失败。"
+    }
+  }
+}

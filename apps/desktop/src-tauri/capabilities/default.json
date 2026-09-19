@@ -1,0 +1,6 @@
+{
+  "identifier": "default",
+  "description": "M00 骨架的最小权限集：只授予 Tauri 核心默认权限（窗口与 IPC）。不授予 HTTP、shell 或通配 fs 权限 —— 这是 SPEC-M00 §5.4 三层防护的第 3 层，新增任何权限都必须先改 Spec。",
+  "windows": ["main"],
+  "permissions": ["core:default"]
+}

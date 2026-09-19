@@ -548,6 +548,8 @@ P0 命令：
 
 ## 18. 开发阶段
 
+> **执行顺序说明（2026-09-19 用户裁定）**：`M00`（Monorepo、契约、CI）**先于** Phase 0 的风险 Spike 执行——Spike 的可复现证据需要仓库骨架、CI 与契约信封作为载体。实际顺序为：工具链预检与安装 → `M00（T010–T012）` → Phase 0 风险 Spike（T001–T005）→ `Checkpoint A` → Phase 2 及之后的业务模块。`tasks/todo.md` 已按此把原 Phase 0 与 Phase 1 合并为统一的 Phase 0。
+
 ### Phase 0：产品与技术风险验证
 
 - 用户访谈和目标用户确认。
@@ -667,11 +669,14 @@ LanguageTeacherAgent-English/
 ├─ CLAUDE.md                     # Claude Code 入口
 ├─ apps/desktop/
 │  ├─ src/                       # React UI
-│  └─ src-tauri/                 # Rust/Tauri
+│  └─ src-tauri/
+│     ├─ Cargo.lock              # Rust 权威 lockfile（提交）
+│     └─ rust-toolchain.toml     # 提交精确 Rust 版本号
 ├─ services/ai-core/
 │  ├─ src/english_teacher/
-│  └─ tests/
-├─ packages/contracts/           # JSON Schema + 生成类型
+│  ├─ tests/
+│  └─ uv.lock                    # Python 权威 lockfile（与 pyproject.toml 同目录）
+├─ packages/contracts/           # JSON Schema + 生成类型（TS 与 Python 包）
 ├─ evals/
 ├─ docs/
 │  ├─ 英语老师AI-Agent-统一产品与技术开发方案.md
@@ -682,9 +687,13 @@ LanguageTeacherAgent-English/
 ├─ scripts/
 ├─ .github/workflows/
 ├─ .env.example
-├─ pnpm-lock.yaml
-└─ uv.lock
+├─ .gitattributes
+├─ .npmrc
+├─ .node-version
+└─ pnpm-lock.yaml
 ```
+
+> **锁文件位置说明（D-4，2026-09-19 确认）**：`uv.lock` 必须与定义项目的 `pyproject.toml` 同目录，因此位于 `services/ai-core/uv.lock`，不在仓库根。根目录只保留 Node 边界的 `pnpm-lock.yaml`；Rust 边界使用 `apps/desktop/src-tauri/Cargo.lock`。每个安装边界只有一个权威 lockfile。细节见 [`specs/SPEC-M00-foundation-contracts.md`](specs/SPEC-M00-foundation-contracts.md)。
 
 ## 23. ADR 清单
 
