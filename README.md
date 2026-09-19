@@ -29,16 +29,19 @@ EngMentor 是一款 **Windows 优先的本地桌面英语学习助手**。
 | 产品与技术方案（统一方案） | 已完成并存档 |
 | T000 产品边界与技术决策（Q1–Q8） | 已完成，逐项由负责人确认 |
 | M00 工程设计 Spec（Monorepo、契约、CI） | v1.2，已复核通过 |
-| 工具链预检脚本（只读） | 已交付并运行 |
-| 源代码（React / Rust / Python） | **尚未创建** |
-| 依赖与锁文件 | **尚未创建** |
-| CI | **尚未创建** |
+| 工具链预检脚本（只读） | 已交付并运行（53 项测试通过） |
+| 开发工具链（Node / pnpm / uv / Python / Rust / MSVC / SDK） | **已安装、已固定版本，预检门禁通过** |
+| Monorepo 骨架（T010-A） | **已建立**：workspace、三个 lockfile、质量命令可运行 |
+| 源代码（React / Rust / Python） | **只有空骨架**：可构建、可测试，但没有任何教学功能 |
+| 版本化契约内容（JSON Schema 与生成类型） | **尚未创建**（T011） |
+| CI（GitHub Actions） | **尚未创建**（T010-B） |
 | Windows 安装包 | **尚未创建** |
-| 界面与截图 | **不存在** |
+| 界面与截图 | **不存在**（骨架界面只显示"还没做什么"） |
 
-已实际运行并能验证的，只有工具链预检脚本；它的作用是在本机盘点"开发还需要补装什么"，不是产品功能。
+**能跑起来的只有开发流程，不是产品。** 现在可以执行安装依赖、静态检查、类型检查、测试与构建；
+但查词、语法、评分、导入等能力一个都没有实现。桌面壳启动后只会显示一张尚未实现的说明页。
 
-下一步（建设中）：安装并固化工具链 → 建立 Monorepo 骨架与 CI → 落地版本化契约 → 风险验证（Spike）→ 按模块实现教学功能。
+下一步（建设中）：建立 CI（T010-B）→ 落地版本化契约（T011）→ 设置与密钥存储骨架（T012）→ 风险验证（Spike）→ 按模块实现教学功能。
 
 实时、权威的进度以 [`PROJECT_STATUS.md`](PROJECT_STATUS.md) 为准；本文件的状态表只能比它更粗，不能比它更乐观。
 
@@ -201,23 +204,41 @@ powershell -NoProfile -ExecutionPolicy Bypass -File scripts/preflight.ps1 -Requi
 powershell -NoProfile -Command "Invoke-Pester scripts/tests/preflight.Tests.ps1"
 ```
 
-### 待 T010 完成后补充的命令
+### 工程命令（T010-A 已实测通过）
 
-仓库骨架、锁文件与 CI 尚未创建，因此**以下都还没有可运行命令**，本表在 T010 完成并验证后填入实际命令，不会提前写未经验证的命令：
+以下命令都在仓库根目录执行，并且**已经在本机实际跑过**（结果见
+[`PROJECT_STATUS.md`](PROJECT_STATUS.md) 的交接记录），不是设计目标：
+
+```powershell
+pnpm install --frozen-lockfile                        # Node 依赖（按 lockfile，不允许漂移）
+uv sync --locked --project services/ai-core           # Python 依赖（按 lockfile）
+uv lock --check --project services/ai-core            # 断言 uv.lock 与 pyproject.toml 一致
+cargo build --locked --manifest-path apps/desktop/src-tauri/Cargo.toml
+
+pnpm lint          # eslint + ruff + cargo fmt/clippy
+pnpm typecheck     # tsc + mypy(strict)
+pnpm test          # vitest + pytest + cargo test
+pnpm build         # 前端构建 + Rust 骨架构建
+pnpm contracts:check   # 契约目录结构与"生成尚未启用"状态
+```
+
+请注意一个真实的顺序约束：Rust 侧通过 `tauri::generate_context!` 在**编译期嵌入前端产物**，
+所以任何 `cargo build` / `cargo test` 之前都必须先有 `apps/desktop/dist`。
+`pnpm build` 与 `pnpm test` 已经替你处理了这个顺序；单独调用 cargo 时请先跑 `pnpm build:web`。
+
+首次创建 lockfile 时使用的是非 fixed 模式（`pnpm install` / `uv sync` / `cargo generate-lockfile`），
+随后立刻用上面的 frozen/locked 命令复验——这是**首次建锁的例外**，之后所有安装都必须走 locked 模式。
+
+### 还没有的命令
 
 | 目的 | 状态 |
 |---|---|
-| 安装 Node 侧依赖 | 待 T010 完成后补充 |
-| 安装 Python 侧依赖 | 待 T010 完成后补充 |
-| 生成并校验契约类型 | 待 T011 完成后补充 |
-| 静态检查（lint） | 待 T010 完成后补充 |
-| 类型检查 | 待 T010 完成后补充 |
-| 单元测试 | 待 T010 完成后补充 |
-| 构建（含桌面骨架） | 待 T010 完成后补充 |
-| 启动桌面应用 | 待 M01 完成后补充 |
-| 打包 Windows 安装包 | 待 T050 完成后补充 |
+| 生成并校验契约生成物 | 待 T011 完成后补充 |
+| 启动桌面应用（开发模式） | 待 M01 完成后补充 |
+| 打包 Windows 安装包 / 签名 | 待 T050 完成后补充 |
+| CI 流程（GitHub Actions） | 待 T010-B 完成后补充 |
 
-M00 Spec 已定义这些入口的**目标命名**，见 [`docs/specs/SPEC-M00-foundation-contracts.md`](docs/specs/SPEC-M00-foundation-contracts.md) 第 7 节；在 T010 落地并实测之前，它们只是设计目标。
+在对应任务落地并实测之前，README 不会写入这些命令。
 
 ## 项目结构
 
@@ -226,6 +247,13 @@ LanguageTeacherAgent-English/
 ├─ README.md                     # 本文件
 ├─ PROJECT_STATUS.md             # 所有 Agent 的第一读物与交接账本
 ├─ AGENTS.md / CLAUDE.md         # AI 协作规则入口
+├─ package.json                  # 根包：私有，只做编排，packageManager 固定 pnpm
+├─ pnpm-workspace.yaml           # workspace 成员 + 依赖安装期脚本/供应链策略
+├─ .npmrc                        # peer 严格、不隐式装 peer、engine-strict
+├─ .gitattributes                # 统一 LF，二进制类型显式标注
+├─ .node-version / .env.example  # Node 版本固定 / 环境变量占位符（无真实值）
+├─ rust-toolchain.toml           # Rust 精确版本（1.98.1，MSVC host）
+├─ eslint.config.mjs             # 含"WebView 不得直接访问外网"的边界规则
 ├─ docs/
 │  ├─ 英语老师AI-Agent-统一产品与技术开发方案.md   # 唯一当前总方案
 │  ├─ specs/                     # 模块规格（当前：SPEC-M00）
@@ -234,10 +262,14 @@ LanguageTeacherAgent-English/
 ├─ scripts/
 │  ├─ preflight.ps1              # 只读工具链预检入口（可运行）
 │  ├─ lib/PreflightChecks.psm1   # 预检的检查逻辑
-│  └─ tests/preflight.Tests.ps1  # 预检测试（Pester）
-├─ apps/desktop/                 # 计划：React UI + src-tauri（尚未创建）
-├─ packages/contracts/           # 计划：JSON Schema + 生成类型（尚未创建）
-├─ services/ai-core/             # 计划：Python AI 运行时（尚未创建）
+│  ├─ tests/preflight.Tests.ps1  # 预检测试（Pester，53 项）
+│  └─ contracts-check.mjs        # 契约目录结构检查
+├─ apps/desktop/                 # 桌面壳（Tauri 2 + React + Vite，骨架可构建）
+│  ├─ src/                       # React UI（只有一张"尚未实现"说明页）
+│  ├─ tests/                     # vitest：元信息 + tauri.conf.json 边界断言
+│  └─ src-tauri/                 # Rust 主进程、tauri.conf.json、capabilities、icons
+├─ packages/contracts/           # 契约包（当前只有目录与说明，schema 属 T011）
+├─ services/ai-core/             # Python 3.12 AI 运行时（当前只有健康检查）
 └─ evals/                        # 计划：评测集（尚未创建）
 ```
 

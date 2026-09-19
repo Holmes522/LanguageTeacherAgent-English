@@ -1,0 +1,24 @@
+[package]
+name = "engmentor-desktop"
+version = "0.0.0"
+description = "EngMentor 桌面壳的 Rust 主进程（M00 骨架，无业务命令）"
+edition = "2021"
+rust-version = "1.98"
+publish = false
+
+# 实际使用的 Rust 版本由仓库根的 rust-toolchain.toml 固定为精确版本（D-5），
+# 这里只是声明最低要求，不承担版本固定职责。
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2", features = [] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+
+[profile.release]
+codegen-units = 1
+lto = true
+panic = "abort"
+strip = true

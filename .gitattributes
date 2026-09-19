@@ -1,0 +1,52 @@
+# 统一文本行尾为 LF。
+#
+# 为什么在 Windows 优先的项目里也强制 LF：契约漂移检查（T011）会比较生成物与仓库内容，
+# 行尾差异会造成假失败；AGENTS.md 与 SPEC-M00 §3.2 都要求先把行尾固定下来再启用该检查。
+* text=auto eol=lf
+
+# ---- 明确按二进制处理：不做行尾转换，不参与文本 diff ----
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.icns binary
+*.webp binary
+*.bmp binary
+*.pdf binary
+*.zip binary
+*.7z binary
+*.gz binary
+*.tar binary
+*.exe binary
+*.dll binary
+*.so binary
+*.dylib binary
+*.lib binary
+*.pdb binary
+*.msi binary
+*.msix binary
+*.appx binary
+*.node binary
+*.woff binary
+*.woff2 binary
+*.ttf binary
+*.otf binary
+*.onnx binary
+*.safetensors binary
+*.gguf binary
+*.pt binary
+*.bin binary
+*.sqlite binary
+*.db binary
+
+# ---- 文本但需要明确标记的类型 ----
+*.ps1 text eol=lf
+*.psm1 text eol=lf
+*.sh text eol=lf
+*.toml text eol=lf
+*.lock text eol=lf
+*.md text eol=lf
+*.json text eol=lf
+*.yaml text eol=lf
+*.yml text eol=lf

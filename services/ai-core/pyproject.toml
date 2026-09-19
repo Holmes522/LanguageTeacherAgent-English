@@ -1,0 +1,46 @@
+[project]
+name = "engm-ai-core"
+version = "0.0.0"
+description = "EngMentor AI Core 侧车进程（M00 骨架：只有健康检查，无业务能力）"
+readme = "README.md"
+requires-python = ">=3.12,<3.13"
+dependencies = [
+    "pydantic>=2.9",
+]
+
+[dependency-groups]
+dev = [
+    "mypy>=1.14",
+    "pytest>=8.3",
+    "ruff>=0.9",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/english_teacher"]
+
+[tool.uv]
+# 以可编辑方式安装本包，使 `english_teacher` 在虚拟环境中可被导入与类型检查，
+# 而不是依赖 PYTHONPATH（SPEC-M00 §6.1）。
+package = true
+
+[tool.ruff]
+target-version = "py312"
+line-length = 100
+src = ["src", "tests"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "SIM"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"
+
+[tool.mypy]
+python_version = "3.12"
+strict = true
+plugins = ["pydantic.mypy"]
+files = ["src", "tests"]

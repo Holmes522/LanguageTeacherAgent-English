@@ -37,13 +37,13 @@
 | 字段 | 当前值 |
 |---|---|
 | Agent/负责人 | ZCode（用户 Holmes 授权） |
-| 当前任务 | T010 前置工具链**已全部就绪**（预检 `VERDICT Ready`、`-RequireReady` 退出码 0）；**等待用户授权进入 T010 骨架** |
-| 当前模块 | `M00-foundation-contracts`（T010 进行中，未完成） |
+| 当前任务 | `T010-A`（Monorepo 骨架与可复现安装边界）**已完成并验证**；`T010-B`（GitHub Actions CI）待做 |
+| 当前模块 | `M00-foundation-contracts`（T010-A 完成；T010-B 与 T011/T012 未开始） |
 | 分支 | `feat/M00-foundation-contracts`（基于 `origin/main` @ `ddd16be`） |
-| 状态 | `IN_PROGRESS`；预检 14 项 ok=13 missing=0 unknown=1，全部 Blocking 项就绪（唯一 unknown 为 Advisory 级 `vbscript`） |
+| 状态 | `IN_PROGRESS`；骨架与三个 lockfile 就绪，11 项验证命令全部 exit 0 |
 | 开始时间 | 2026-09-19 |
-| 计划修改文件 | `rust-toolchain.toml`、`.node-version`、`scripts/lib/PreflightChecks.psm1`、`scripts/tests/preflight.Tests.ps1`、`README.md`、`PROJECT_STATUS.md`、`tasks/todo.md` |
-| 下一检查点 | 用户授权 → T010（Monorepo 骨架、三个锁文件、`.gitattributes`/`.npmrc`/`.env.example`/`.gitleaks.toml`、GitHub Actions 最小 CI） |
+| 计划修改文件 | `package.json`、`pnpm-workspace.yaml`、`.npmrc`、`.gitattributes`、`.env.example`、`eslint.config.mjs`、`apps/desktop/**`、`packages/contracts/**`、`services/ai-core/**`、`scripts/contracts-check.mjs`、`README.md`、`PROJECT_STATUS.md`、`tasks/todo.md` |
+| 下一检查点 | 用户审阅 T010-A → 授权 `T010-B`（GitHub Actions 最小 CI：contracts / web / python / rust / secrets 五个 job、Windows runner、零密钥） |
 
 **执行顺序（2026-09-19 用户裁定，替代此前冲突描述）**：工具链预检与安装（T010 的第一步）→ `M00（T010–T012）` → `T001–T005` 风险 Spike → `Checkpoint A` → Phase 1 及之后的业务模块。M00 不再排在 Spike 之后。
 
@@ -53,7 +53,7 @@
 
 | 模块 ID | 模块 | 优先级 | 状态 | 最后验证 | 证据/PR | 下一步 |
 |---|---|:---:|---|---|---|---|
-| `M00-foundation-contracts` | Monorepo、契约、CI、ADR 与规则 | P0 | IN_PROGRESS | 2026-09-19 工具链全部就绪：预检 14 项 ok=13 missing=0 unknown=1，`-RequireReady` 退出码 0 | [`SPEC-M00`](docs/specs/SPEC-M00-foundation-contracts.md)、`scripts/preflight.ps1`、`rust-toolchain.toml` | 等待授权 → 完成 T010–T012 骨架与 CI（**先于** T001–T005 Spike） |
+| `M00-foundation-contracts` | Monorepo、契约、CI、ADR 与规则 | P0 | IN_PROGRESS | 2026-09-19 T010-A 完成：11 项验证命令全部 exit 0；三个 lockfile 就绪 | [`SPEC-M00`](docs/specs/SPEC-M00-foundation-contracts.md)、`apps/`、`packages/`、`services/` | T010-B（CI）→ T011（契约）→ T012（设置与密钥）（**先于** T001–T005 Spike） |
 | `M01-desktop-shell` | Tauri 桌面壳、Sidecar、安装更新 | P0 | NOT_STARTED | — | — | Sidecar Spike |
 | `M02-local-storage-settings` | SQLite、迁移、设置、密钥 | P0 | NOT_STARTED | — | — | 等待 M00/M01 |
 | `M03-llm-gateway` | DeepSeek、流式、结构化输出、预算 | P0 | NOT_STARTED | — | — | DeepSeek Spike |
@@ -138,6 +138,17 @@
   - JSON 报告写入 `tmp/preflight/`（已被 `.gitignore` 忽略）。`-OutputDirectory` 只允许指向 `tmp/preflight/` 或其子目录，仓库外路径被拒绝（退出码 2）。
 - 安装副作用（已由用户处理，需知悉）：此前失败的 VS Build Tools 安装尝试（winget `Microsoft.VisualStudio.2022.BuildTools`，退出码 143）创建了 `C:\Program Files (x86)\Microsoft Visual Studio\Installer\`（含 `vswhere.exe`，这一发现反而让预检得以正确诊断）以及一个当时**不完整**的 `...\2022\BuildTools\` 目录树。用户随后通过 Visual Studio Installer 完成安装，该实例现已是**完整且已注册**的 VS 实例（Build Tools 2022 `17.14.37710.0`，实例目录 `_Instances\b672361a` 已生成 `state.json`）。
 - 全部 Blocking 项就绪：**预检 `-RequireReady` 退出码 0**（报告模式 `VERDICT Ready`，14 项 ok=13 missing=0 unknown=1，唯一的 unknown 是 Advisory 级 `vbscript`）。
+- Monorepo 骨架（T010-A，2026-09-19 完成）：
+  - 根级工程规则：`.gitattributes`（统一 LF + 二进制标注）、`.npmrc`（peer 严格 / 不隐式装 peer / engine-strict）、`.env.example`（仅占位符）、`package.json`（private，`packageManager` 固定 `pnpm@12.4.2`）、`pnpm-workspace.yaml`（仅 `apps/*`、`packages/*`）、`eslint.config.mjs`。
+  - 三个安装边界与三个权威 lockfile：
+    - Node：`pnpm-lock.yaml`（根）— 3 个 workspace 项目，249 个条目通过 pnpm 供应链策略校验。
+    - Python：`services/ai-core/uv.lock` — 18 个包。
+    - Rust：`apps/desktop/src-tauri/Cargo.lock` — 430 个包。
+  - `apps/desktop`：Tauri 2 + React + Vite 的最小可构建骨架（`src/`、`src-tauri/`、`capabilities/default.json`、`icons/icon.ico`）。刻意不注册任何 Tauri command。
+  - `packages/contracts`：只有目录、README 与占位模块；**没有任何 schema 或生成物**（属 T011）。
+  - `services/ai-core`：Python 3.12 包 `engm-ai-core`，仅含严格类型化的健康检查与 3 项测试。
+  - `scripts/contracts-check.mjs`：契约目录结构检查，并显式报告"生成尚未启用"；检测到 schema/生成物即失败。
+- 规模约束（本轮刻意不做）：无查词/语法/评分/RAG/导入/题库、无真实 API 调用、无密钥存储、无 GitHub Actions CI（T010-B）、无安装包、未启用 `bundle.active`。
 - 待办提示：`winget list` 未把 Build Tools 2022 列为已安装包（不在其 ARP 记录中），因此后续升级/卸载应走 Visual Studio Installer 而不是 winget。
 - 已有规划文档：统一方案、实施计划、任务清单和两份历史方案。
 - 未授权事项（勿自行执行）：分支保护、PR 创建、`gh` CLI 安装与认证、Actions 首次运行、安装依赖与生成脚手架（须在 M00 Spec 获批后）。
@@ -193,6 +204,48 @@
 ```
 
 ## 11. 交接记录
+### 2026-09-19 — T010-A Monorepo 骨架与可复现安装边界（DONE；等待审阅）
+
+- Agent/负责人：ZCode（用户授权 T010-A）
+- 状态：DONE —— 11 项验证命令全部退出码 0
+- 分支：`feat/M00-foundation-contracts`
+- Commit/PR：本分支提交；未创建 PR，未 push `main`，未 force push
+- 完成内容：见 §8「Monorepo 骨架（T010-A）」。
+- 未完成内容（**T010-B 及之后**）：GitHub Actions CI 未创建；`.gitleaks.toml` 与 secret 扫描未接入；契约内容（T011）、设置与密钥存储（T012）未开始。
+- 关键文件：见 §3「计划修改文件」；新增 26 个文件、修改 0 个既有源文件。
+- 接口/Schema 变化：无（`packages/contracts/schema/v1` 仍为空）
+- 数据迁移：无
+- ADR/决策：无新增 ADR。两处需要记录的技术决定（均在 `pnpm-workspace.yaml` 注释中说明）：
+  1. `allowBuilds: esbuild: false` —— 不允许依赖在安装期执行脚本，正确性由 `pnpm build:web` 实测保证；
+  2. `minimumReleaseAgeExclude` —— pnpm 12 的供应链保护要求把固定到精确版本、发布较新的包登记为例外（pnpm 自动写入，已补充说明）。
+- 验证命令与结果（全部在仓库根执行，逐条退出码）：
+  - `scripts/preflight.ps1 -RequireReady -NoJson -Quiet` → **0**
+  - `pnpm install --frozen-lockfile` → **0**
+  - `uv sync --locked --project services/ai-core` → **0**
+  - `uv lock --check --project services/ai-core` → **0**
+  - `cargo build --locked --manifest-path apps/desktop/src-tauri/Cargo.toml` → **0**
+  - `pnpm lint`（eslint + ruff + cargo fmt/clippy）→ **0**
+  - `pnpm typecheck`（tsc×2 + mypy --strict）→ **0**
+  - `pnpm test`（vitest 6 项 + pytest 3 项 + cargo test 2 项）→ **0**
+  - `pnpm build`（vite + cargo）→ **0**
+  - `pnpm contracts:check` → **0**（显式报告生成未启用）
+  - `git diff --check` → **0**
+- 实际锁定版本：Node `22.20.0`、pnpm `12.4.2`、uv `0.12.17`、Python `3.12.14`、Rust/cargo `1.98.1`；前端 React/React-DOM `19.3.0`、Vite `7.3.6`、`@vitejs/plugin-react` `5.2.0`、TypeScript `5.9.3`、Vitest `4.1.11`、ESLint `10.11.0`、typescript-eslint `8.70.0`、`@tauri-apps/api` `2.11.1`、`@tauri-apps/cli` `2.11.4`；Rust `tauri` `2.11.5`、`tauri-build` `2.6.3`、`serde` `1.0.229`；Python `pydantic` `2.13.5`、`mypy` `2.3.1`、`pytest` `9.1.1`、`ruff` `0.16.8`。
+- **首次建锁例外**：lockfile 首次生成使用非 frozen 模式（`pnpm install`、`uv sync`、`cargo generate-lockfile`），随后立即用 frozen/locked 命令复验通过。CLAUDE.md 要求记录该例外，特此登记。
+- 过程中发现并修复的问题：
+  1. `tauri-build` 在 Windows 上**总会**生成资源文件，因此要求 `src-tauri/icons/icon.ico` 存在，即使 `bundle.active=false`。首次 `cargo build` 因此失败（exit 101）。已生成合法的 32×32 32bpp 占位 ICO，来源与生成器见 `icons/README.md`。
+  2. `cargo fmt --check` 首次未通过（测试断言换行方式）；已用 `cargo fmt` 修正。
+  3. mypy 与 ruff 在"frozen 模型不可变"测试上冲突：mypy 禁止对只读属性赋值（B010 又禁止 `setattr` 常量属性）。最终使用普通赋值 + 精确的 `# type: ignore[misc]`，并在测试注释中说明理由。
+  4. `uv run --project ... mypy` 从仓库根执行时无法发现项目配置；`test:py` / `typecheck:py` / `lint:py` 改为 `cd services/ai-core && uv run ...`，使每个工具在项目目录下运行（与 Spec §7 的字面写法不同，效果等价且更稳健）。
+  5. `pnpm build` / `pnpm test` 中的 Rust 步骤依赖前端产物（`tauri::generate_context!` 在编译期嵌入 `dist`），故 `test:rust` 内置 `build:web`；该顺序约束已写入 README。
+- 已知问题与风险：
+  - MSVC 链接仍只是"存在性检查 + 一次成功的 `cargo build`"，尚未验证 release 构建与打包；真正的打包验证属于 T050。
+  - `packages/contracts` 目前是空壳；在 T011 之前不要把它当成可用的契约来源。
+  - `vbscript` 仍为 UNKNOWN（需提权查询），仅影响 MSI 打包，不阻塞当前工作。
+  - 两个 VS 实例（Community `17.11.35303.130` 与 Build Tools `17.14.37710.0`）共存，`vswhere -latest` 解析到后者。
+- 环境或密钥要求：无需任何密钥；未创建 `.env`；`.env.example` 只含占位符。
+- 下一个 Agent 应先做：等待用户审阅 T010-A；获批后执行 **T010-B**：创建 `.github/workflows/ci.yml`（contracts / web / python / rust / secrets 五个 job、`windows-latest`、零密钥依赖、三方 Action 固定完整 SHA），并补 `.gitleaks.toml` 与 `pnpm check:secrets`。
+
 
 ### 2026-09-19 — Windows SDK 就绪验证（DONE；等待 T010 授权）
 

@@ -1,0 +1,40 @@
+:root {
+  color-scheme: light dark;
+  font-family: system-ui, 'Segoe UI', 'Microsoft YaHei', sans-serif;
+  line-height: 1.6;
+}
+
+body {
+  margin: 0;
+  padding: 0;
+}
+
+.shell {
+  max-width: 46rem;
+  margin: 0 auto;
+  padding: 2.5rem 1.5rem;
+}
+
+.shell h1 {
+  font-size: 1.75rem;
+  margin: 0 0 0.25rem;
+}
+
+.shell h2 {
+  font-size: 1.1rem;
+  margin: 1.75rem 0 0.5rem;
+}
+
+.stage {
+  margin: 0;
+  font-weight: 600;
+  opacity: 0.75;
+}
+
+.shell footer {
+  margin-top: 2.5rem;
+  padding-top: 1rem;
+  border-top: 1px solid currentColor;
+  opacity: 0.7;
+  font-size: 0.9rem;
+}

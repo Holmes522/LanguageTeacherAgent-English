@@ -1,0 +1,14 @@
+{
+  "name": "@engm/contracts",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "EngMentor 本地契约包：JSON Schema 是唯一来源，生成 TypeScript 与 Python 类型。当前仅有占位说明，未启用生成。",
+  "main": "src/index.ts",
+  "scripts": {
+    "typecheck": "tsc --noEmit -p tsconfig.json"
+  },
+  "devDependencies": {
+    "typescript": "5.9.3"
+  }
+}
