@@ -1,0 +1,157 @@
+# ============================================================
+# EngMentor 英语老师 AI Agent — 仓库安全与构建忽略规则
+#
+# 规则目标（对应 AGENTS.md「开发纪律」）：
+#  1. 密钥、真实用户内容、未授权词典内容、模型权重绝不进入 Git。
+#  2. 构建产物、依赖目录、本地索引与缓存不进入 Git。
+#  3. 每个安装边界只保留一个权威 lockfile（pnpm-lock.yaml / uv.lock / Cargo.lock）。
+# ============================================================
+
+# ---------- 密钥与凭据 ----------
+.env
+.env.*
+!.env.example
+*.key
+*.pem
+*.p12
+*.pfx
+*.jks
+*.keystore
+secrets/
+.credentials/
+*_rsa
+*_ed25519
+
+# ---------- Node / pnpm / 前端 ----------
+node_modules/
+.pnpm-store/
+.npm/
+.yarn/
+*.tsbuildinfo
+dist/
+dist-ssr/
+build/
+out/
+.vite/
+.turbo/
+coverage/
+playwright-report/
+test-results/
+
+# ---------- Python / uv ----------
+.venv/
+venv/
+ENV/
+__pycache__/
+*.py[cod]
+*.egg-info/
+.eggs/
+build/*.egg
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.pytype/
+.hypothesis/
+.uv/
+pip-wheel-metadata/
+
+# ---------- Rust / Tauri ----------
+target/
+**/src-tauri/target/
+**/src-tauri/gen/
+**/src-tauri/binaries/
+**/src-tauri/*.exe
+*.pdb
+
+# ---------- 本地数据库 / 向量索引 / 缓存 ----------
+*.db
+*.db-journal
+*.db-wal
+*.db-shm
+*.sqlite
+*.sqlite3
+*.sqlite-journal
+*.duckdb
+qdrant_storage/
+qdrant/
+vector_index/
+indexes/
+rag_index/
+cache/
+.local_data/
+app_data/
+
+# ---------- 模型权重与 Embedding 包 ----------
+models/
+embeddings/
+*.onnx
+*.safetensors
+*.gguf
+*.pt
+*.pth
+*.ckpt
+*.h5
+*.tflite
+*.mlmodel
+*.bin
+*.npy
+*.npz
+.model_cache/
+huggingface/
+
+# ---------- 用户上传与本地产物 ----------
+uploads/
+imports/
+documents/
+tmp/
+temp/
+.sandbox/
+*.tmp
+
+# ---------- 日志与诊断 ----------
+logs/
+*.log
+npm-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+crash-reports/
+*.dmp
+
+# ---------- 测试 / Eval 运行产物 ----------
+evals/reports/
+evals/results/
+*.eval.json
+eval_report*.json
+coverage.xml
+junit*.xml
+
+# ---------- IDE / 编辑器本地文件 ----------
+.idea/
+.vscode/*
+!.vscode/settings.json.example
+!.vscode/extensions.json
+.claude/settings.local.json
+.claude/*.local.json
+*.swp
+*.swo
+*~
+.history/
+
+# ---------- 操作系统文件 ----------
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+.DS_Store
+$RECYCLE.BIN/
+
+# ---------- 打包与发布产物 ----------
+*.msi
+*.msix
+*.appx
+*.nsis
+*.zip
+*.7z
+*.tar.gz
+release/
+artifacts/
+sbom/
