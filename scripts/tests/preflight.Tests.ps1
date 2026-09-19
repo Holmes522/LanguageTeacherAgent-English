@@ -446,6 +446,35 @@ Describe 'preflight: version mismatches are WARN, never MISSING' {
     }
 }
 
+Describe 'preflight: vswhere discovery' {
+
+    It 'offers the 32-bit Program Files root, where the VS Installer actually puts vswhere' {
+        $candidates = Get-VswhereCandidatePaths
+        ($candidates.Count -gt 0) | Should Be $true
+        (($candidates -join ';') -match 'Program Files \(x86\)\\Microsoft Visual Studio\\Installer\\vswhere\.exe') | Should Be $true
+    }
+
+    It 'probes the injected candidate list rather than an outer scope value' {
+        # Regression: the probe closure previously read a module-scoped variable, which
+        # GetNewClosure() does not capture, so it always reported "not found".
+        $probe = Get-RealProbes -VswhereCandidates @('C:\definitely\not\here\vswhere.exe')
+        $missingResult = & $probe['Vswhere'] @('-property', 'installationPath')
+        $missingResult.available | Should Be $false
+
+        $probeWithRealPath = Get-RealProbes -VswhereCandidates @($modulePath)
+        $presentResult = & $probeWithRealPath['Vswhere'] @('-property', 'installationPath')
+        $presentResult.available | Should Be $true
+        $presentResult.path | Should Be $modulePath
+    }
+
+    It 'never reports availability for a list of non-existent candidates' {
+        $probe = Get-RealProbes -VswhereCandidates @('C:\nope\a.exe', 'C:\nope\b.exe')
+        $result = & $probe['Vswhere'] @('-property', 'installationPath')
+        $result.available | Should Be $false
+        $result.exitCode | Should Be -1
+    }
+}
+
 Describe 'preflight: read-only by construction' {
 
     $sources = @{

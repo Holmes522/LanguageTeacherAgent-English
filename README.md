@@ -167,6 +167,20 @@ EngMentor 是一款 **Windows 优先的本地桌面英语学习助手**。
 | 主模型 | DeepSeek，API model id `deepseek-flash` |
 | 包管理 | pnpm（Node）、uv（Python）、Cargo（Rust），每个安装边界一个权威 lockfile |
 
+### 已固定的开发工具链版本
+
+以下是开发机上**已安装并实测**的版本，不是计划值：
+
+| 工具 | 版本 | 固定方式 |
+|---|---|---|
+| Node.js | `v22.20.0` | `.node-version` |
+| pnpm | `12.4.2` | 待 T010 写入根 `package.json` 的 `packageManager` |
+| uv | `0.12.17` | 计划写入 `services/ai-core/uv.lock`（T010/T011 创建） |
+| Python | `3.12.14` | 由 uv 托管；`.python-version` 随 T010 创建 |
+| Rust / cargo | `1.98.1`（host `x86_64-pc-windows-msvc`，含 rustfmt、clippy） | `rust-toolchain.toml`（精确版本号） |
+
+**当前开发环境尚缺 Windows SDK**，因此还不能链接 Windows 二进制；补齐之前 `cargo build` 会失败。这是预检脚本目前唯一的 Blocking 未就绪项。
+
 ### 目前可以运行的命令（已实际验证）
 
 只读环境盘点，不安装任何东西、不修改任何配置：

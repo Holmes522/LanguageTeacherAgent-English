@@ -1,0 +1,18 @@
+# Rust toolchain pin for the EngMentor repository.
+#
+# SPEC-M00 D-5 requires an exact version here, never a floating channel such as "stable":
+# dependency upgrades must be a separate, reviewable commit. The host target must be the
+# MSVC one, because Windows is the first shipping platform.
+#
+# Verified on 2026-09-19:
+#   rustc 1.98.1 (48a229cea 2026-09-01)
+#   host: x86_64-pc-windows-msvc
+#   components: cargo, clippy, rust-std, rustc, rustfmt
+#
+# To upgrade: change `channel`, run `rustup toolchain install <new version>` and then
+# `cargo build --locked` before committing the change on its own.
+
+[toolchain]
+channel = "1.98.1"
+components = ["rustfmt", "clippy"]
+targets = ["x86_64-pc-windows-msvc"]

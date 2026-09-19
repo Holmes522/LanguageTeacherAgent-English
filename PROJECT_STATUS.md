@@ -37,13 +37,13 @@
 | 字段 | 当前值 |
 |---|---|
 | Agent/负责人 | ZCode（用户 Holmes 授权） |
-| 当前任务 | README 文档基线（Living README + AGENTS 维护规则 + M00 验收项），**等待进入工具链安装与版本固化** |
+| 当前任务 | 工具链安装与版本固化（pnpm / uv / Python 3.12 / Rust 已装并固定；**MSVC/Windows SDK 需提权，BLOCKED**） |
 | 当前模块 | `M00-foundation-contracts`（T010 进行中，未完成） |
 | 分支 | `feat/M00-foundation-contracts`（基于 `origin/main` @ `ddd16be`） |
-| 状态 | `IN_PROGRESS`（Spec v1.2；README 基线已建立；安装未开始） |
+| 状态 | `IN_PROGRESS`；预检 14 项中 12 项 OK，唯一 Blocking 缺失为 `msvc`（Windows SDK） |
 | 开始时间 | 2026-09-19 |
-| 计划修改文件 | `README.md`、`AGENTS.md`、`docs/specs/SPEC-M00-foundation-contracts.md`、`PROJECT_STATUS.md`、`tasks/todo.md` |
-| 下一检查点 | 工具链安装与版本固化（已授权）→ 重跑预检至 Blocking 全绿 → 继续 T010（Monorepo、锁文件、CI） |
+| 计划修改文件 | `rust-toolchain.toml`、`.node-version`、`scripts/lib/PreflightChecks.psm1`、`scripts/tests/preflight.Tests.ps1`、`README.md`、`PROJECT_STATUS.md`、`tasks/todo.md` |
+| 下一检查点 | 在**提权** shell 安装 Windows SDK → 预检 `-RequireReady` 退出码 0 → 继续 T010（Monorepo、锁文件、CI） |
 
 **执行顺序（2026-09-19 用户裁定，替代此前冲突描述）**：工具链预检与安装（T010 的第一步）→ `M00（T010–T012）` → `T001–T005` 风险 Spike → `Checkpoint A` → Phase 1 及之后的业务模块。M00 不再排在 Spike 之后。
 
@@ -53,7 +53,7 @@
 
 | 模块 ID | 模块 | 优先级 | 状态 | 最后验证 | 证据/PR | 下一步 |
 |---|---|:---:|---|---|---|---|
-| `M00-foundation-contracts` | Monorepo、契约、CI、ADR 与规则 | P0 | IN_PROGRESS | 2026-09-19 Spec v1.1 已复核通过；工具链预检已运行（13 项：ok=5 missing=6 unknown=2） | [`SPEC-M00`](docs/specs/SPEC-M00-foundation-contracts.md)、`scripts/preflight.ps1` | 用户确认安装方案 → 安装 pnpm/uv/Python3.12/Rust+MSVC → 完成 T010–T012（**先于** T001–T005 Spike） |
+| `M00-foundation-contracts` | Monorepo、契约、CI、ADR 与规则 | P0 | IN_PROGRESS | 2026-09-19 工具链已装并固定；预检 14 项 ok=12 missing=1 unknown=1（仅 msvc/SDK 阻塞） | [`SPEC-M00`](docs/specs/SPEC-M00-foundation-contracts.md)、`scripts/preflight.ps1`、`rust-toolchain.toml` | 提权安装 Windows SDK → 预检 `-RequireReady` 归零 → 完成 T010–T012（**先于** T001–T005 Spike） |
 | `M01-desktop-shell` | Tauri 桌面壳、Sidecar、安装更新 | P0 | NOT_STARTED | — | — | Sidecar Spike |
 | `M02-local-storage-settings` | SQLite、迁移、设置、密钥 | P0 | NOT_STARTED | — | — | 等待 M00/M01 |
 | `M03-llm-gateway` | DeepSeek、流式、结构化输出、预算 | P0 | NOT_STARTED | — | — | DeepSeek Spike |
@@ -120,16 +120,23 @@
 - CI：尚未创建。
 - 已就绪的 Spec：[`docs/specs/SPEC-M00-foundation-contracts.md`](docs/specs/SPEC-M00-foundation-contracts.md)（**v1.2**，v1.1 已复核通过，v1.2 增补 README 文档基线验收项 AC-15～AC-18）。
 - 文档基线：[`README.md`](README.md) 已建立（Living README，Pre-alpha 状态如实声明，用户使用指南按 10 个固定小节预留为"待实现"占位，不含未实现命令、虚构截图或下载地址）。维护规则见 [`AGENTS.md`](AGENTS.md)「README 维护规则」：README 与实际产品不一致时模块不得标记 `DONE`。
-- 本机工具链基线（2026-09-19 只读核对）：Git 2.51.0.windows.1（`core.autocrlf` 生效，工作区 CRLF/仓库 LF，待 `.gitattributes` 统一）；Node v22.20.0 ✅；npm 10.9.3（仅引导）；**pnpm 未安装**；系统 Python 3.13.7（项目固定 3.12，由 uv 管理，**不使用系统解释器**）；**uv 未安装**；**Rust/Cargo 未安装**；**MSVC C++ Build Tools 未核对**；**WebView2 Runtime 未核对**；**VBSCRIPT 按需功能未核对**。
-- 工具链预检（v2.0.0，2026-09-19 重构加固）：入口 `scripts/preflight.ps1`（短入口，仅 CLI 与退出码）+ 检查模块 `scripts/lib/PreflightChecks.psm1`（全部检查逻辑与可注入探针）+ 测试 `scripts/tests/preflight.Tests.ps1`（Pester，唯一的自动化测试来源；脚本内原有的 `-SelfTest` 假场景框架已删除以免重复）。清单见 Spec §3.2。
-- 预检执行结果（2026-09-19，报告模式，退出码 0；共 **14** 项：ok=6 missing=6 unknown=2）：
-  - **已就绪**：Git `2.51.0.windows.1`；Node `v22.20.0`；npm `10.9.3`；Corepack `0.34.0`；winget `v1.29.290`（Info，仅安装渠道）；**WebView2 Runtime `153.0.4234.32`**（已预装）。
-  - **缺失（Blocking，T010 前置）**：`pnpm`、`uv`、`python312`（现有解释器为 3.13.7，不是项目解释器）、`rustc`、`cargo`。
-  - **无法判定（Blocking）**：`msvc` —— 未找到 `vswhere.exe`，故 VC Tools、`link.exe` 与 Windows SDK 三项均无法判定。该检查现在要求三者**同时**成立才为 OK，缺任一即为 Blocking-not-ready。
-  - **无法判定（Advisory）**：`vbscript` —— `Get-WindowsCapability -Online` 需要提权；`System32\vbscript.dll` 存在，但仅凭文件存在不能证明按需功能已启用。**仅 MSI 打包前置项，非当前开发硬阻塞。**
-  - JSON 报告写入 `tmp/preflight/`（已被 `.gitignore` 忽略）。`-OutputDirectory` 只允许指向 `tmp/preflight/` 或其子目录，仓库外路径被拒绝（退出码 2）；不污染仓库。
-- 安装尚未执行：本阶段未安装任何软件，未修改环境变量、注册表、Git 配置或用户 Profile。
-- 待安装清单与需核实的包 ID（下一阶段）：`pnpm`（`pnpm` 渠道 or Corepack）、`uv`（`astral-sh.uv`）、Python 3.12（优先 `uv python install 3.12`）、Rust（`Rustlang.Rustup` + 精确版本 `x86_64-pc-windows-msvc`）、MSVC Build Tools（`Microsoft.VisualStudio.2022.BuildTools` + 工作负载 `Microsoft.VisualStudio.Workload.VCTools`）。**包 ID 尚未验证**：预检只读，不执行 winget 查询或任何安装命令。
+- 本机工具链（2026-09-19 已安装并固定版本）：
+  - Git `2.51.0.windows.1`（`core.autocrlf` 生效，工作区 CRLF/仓库 LF，待 `.gitattributes` 统一）；Node `v22.20.0`（已写入 `.node-version`）；npm `10.9.3`（仅引导）；Corepack `0.34.0`；winget `v1.29.290`；WebView2 Runtime `153.0.4234.32`。
+  - **pnpm `12.4.2`**（winget `pnpm.pnpm`，用户作用域）。`npm install -g pnpm` 失败：本机 npm 全局前缀是 `F:\JAVA_Tools\NodeJs`（Node 安装目录），非提权不可写（EPERM），故改用 winget。
+  - **uv `0.12.17`**（winget `astral-sh.uv`，用户作用域）。
+  - **Python `3.12.14`**（`uv python install 3.12`，由 uv 托管于 `%APPDATA%\uv\python\`）。系统 3.13.7 仍存在，但**不是**项目解释器。
+  - **Rust `1.98.1` / cargo `1.98.1` / rustup `1.29.1`**，host `x86_64-pc-windows-msvc`，含 rustfmt 与 clippy。用官方 `rustup-init.exe` 安装（winget 的 `Rustlang.Rustup` 无用户作用域安装程序）。
+  - 版本固定文件：`rust-toolchain.toml`（`channel = "1.98.1"` + rustfmt/clippy + `x86_64-pc-windows-msvc`，满足 D-5「必须写精确版本号」）、`.node-version`（`22.20.0`）。已在仓库内实测 `rustup show active-toolchain` → `overridden by rust-toolchain.toml`。
+  - 未创建：`package.json` 的 `packageManager`（pnpm 固定）与 `.python-version`（Python 固定）——两者随 T010 的包清单一起落地，避免提前生成脚手架。
+- 工具链预检（v2.0.1）：入口 `scripts/preflight.ps1`（短入口，仅 CLI 与退出码）+ 检查模块 `scripts/lib/PreflightChecks.psm1`（检查逻辑与可注入探针）+ 测试 `scripts/tests/preflight.Tests.ps1`（Pester 53 项，唯一自动化测试来源）。清单见 Spec §3.2。
+- **预检缺陷（本轮发现并修复）**：v2.0.0 的 `Vswhere` 探针在 `GetNewClosure()` 闭包内读取模块作用域变量 `$script:VswhereCandidates`，而闭包只捕获**局部**变量，导致该变量恒为空、探针始终返回「未找到 vswhere」。后果是不会误报 MISSING（状态为 UNKNOWN，属安全的保守失败），但会给出错误的诊断方向。修复：把候选路径改为 `Get-RealProbes` 的参数（局部变量）并在闭包内捕获，新增 `Get-VswhereCandidatePaths` 与 3 项回归测试。本机正是 `C:\Program Files (x86)\...\Installer\vswhere.exe` 这一被漏检的位置。
+- 预检执行结果（2026-09-19 修复后，报告模式，退出码 0；共 **14** 项：ok=12 missing=1 unknown=1）：
+  - **已就绪（Blocking）**：Git、Node `v22.20.0`、pnpm `12.4.2`、uv `0.12.17`、Python `3.12`、rustc `1.98.1`、cargo `1.98.1`、WebView2 `153.0.4234.32`。
+  - **缺失（Blocking，唯一阻塞项）**：`msvc` —— 检测到 **Visual Studio Community 2022 `17.11.3`**（2024-09-17 预装）自带 VC 工具 `14.41.34120` 与 `link.exe`，但 **Windows SDK 缺失**：注册表 `KitsRoot10` 指向 `C:\Program Files (x86)\Windows Kits\10\`，而该目录下没有 `Include\` 与 `Lib\`，全盘也找不到 `windows.h` / `kernel32.lib`。缺 SDK 无法链接 Windows 二进制。
+  - **无法判定（Advisory）**：`vbscript` —— 需提权才能查询按需功能状态；**仅为 MSI 打包前置项，非当前开发硬阻塞**。
+  - JSON 报告写入 `tmp/preflight/`（已被 `.gitignore` 忽略）。`-OutputDirectory` 只允许指向 `tmp/preflight/` 或其子目录，仓库外路径被拒绝（退出码 2）。
+- 安装副作用（需知悉）：失败的 VS Build Tools 安装尝试（winget `Microsoft.VisualStudio.2022.BuildTools`，退出码 143，未注册到 winget）创建了 `C:\Program Files (x86)\Microsoft Visual Studio\Installer\`（含 `vswhere.exe`，这一发现反而让预检得以正确诊断）以及一个**不完整**的 `C:\Program Files (x86)\Microsoft Visual Studio\2022\BuildTools\` 目录树（Common7 / DIA SDK / Licenses / MSBuild / SDK / Team Tools / VC）。**未删除**：目录位于 Program Files 下、需要提权，且可能与本机既有 VS 安装共享组件；是否清除应由用户决定。
+- 剩余阻塞：**Windows SDK 安装需要管理员权限**，当前 shell 为非提权（预检报告 `elevated: False`），因此无法完成「预检 `-RequireReady` 退出码 0」。解除方式见 §11 交接记录的下一步。
 - 已有规划文档：统一方案、实施计划、任务清单和两份历史方案。
 - 未授权事项（勿自行执行）：分支保护、PR 创建、`gh` CLI 安装与认证、Actions 首次运行、安装依赖与生成脚手架（须在 M00 Spec 获批后）。
 
@@ -184,6 +191,43 @@
 ```
 
 ## 11. 交接记录
+
+### 2026-09-19 — 工具链安装与版本固化（IN_PROGRESS；MSVC/Windows SDK BLOCKED）
+
+- Agent/负责人：ZCode（用户 Holmes 授权执行安装）
+- 状态：**IN_PROGRESS / 部分 BLOCKED**。5 项已安装并固定；`msvc` 因缺 Windows SDK 且安装需管理员权限而阻塞。
+- 分支：`feat/M00-foundation-contracts`
+- Commit/PR：本分支提交；未创建 PR（用户未授权），未 push `main`，未 force push
+- 完成内容：
+  - 安装并固定：**pnpm 12.4.2**（winget `pnpm.pnpm`，用户作用域）、**uv 0.12.17**（winget `astral-sh.uv`，用户作用域）、**Python 3.12.14**（`uv python install 3.12`）、**Rust/cargo 1.98.1 + rustup 1.29.1**（官方 `rustup-init.exe`，host `x86_64-pc-windows-msvc`，含 rustfmt/clippy）。
+  - 新增版本固定文件：`rust-toolchain.toml`（精确版本 `1.98.1` + rustfmt/clippy + MSVC target，满足 D-5）、`.node-version`（`22.20.0`）。实测仓库内 `rustup show active-toolchain` 显示被 `rust-toolchain.toml` 覆盖。
+  - 安装渠道核实：winget 包 ID 先用 `winget search` 只读核实（`pnpm.pnpm` / `astral-sh.uv` / `Rustlang.Rustup`）；`Rustlang.Rustup` 无用户作用域安装程序，故改用官方 rustup-init。
+  - rustup-init 供应链校验：**未依赖代码签名**（官方产物此版本无 Authenticode 签名，`Get-AuthenticodeSignature` 报 `NotSigned`）。改为比对官方发布的 SHA-256（`6f4bef66…0bdb7e`）并从两个独立官方主机各下载一次，两个副本与发布校验值三者一致、字节完全相同后才执行；安装器临时文件已清理。
+  - **修复预检缺陷（v2.0.0 → v2.0.1）**：`Vswhere` 探针在 `GetNewClosure()` 闭包内读取模块作用域变量，而闭包只捕获局部变量，导致 vswhere 恒被判为「未找到」。该缺陷不会误报 MISSING（返回 UNKNOWN，保守失败），但会误导诊断方向。修复为把候选路径作为 `Get-RealProbes` 参数注入，新增 `Get-VswhereCandidatePaths`，并补 3 项回归测试。
+  - Pester 测试从 50 增至 **53 项，全部通过**。
+- 未完成内容：
+  - **Windows SDK 未安装**（唯一 Blocking 项）。`msvc` 检查要求 VC 工具 + `link.exe` + SDK 三者齐备：前两者由本机预装的 Visual Studio Community 2022 `17.11.3` 提供（VC 工具 `14.41.34120`），但注册表 `KitsRoot10` 指向的 `C:\Program Files (x86)\Windows Kits\10\` 下没有 `Include\` 与 `Lib\`，全盘无 `windows.h` / `kernel32.lib`。缺 SDK 无法链接 Windows 二进制。
+  - 因此预检 `-RequireReady` 仍为退出码 1，不能进入 T010 的 `cargo build`/CI 验证。
+  - Monorepo 骨架、锁文件、CI、契约包均未创建；`package.json` 的 `packageManager` 与 `.python-version` 未创建（随 T010 包清单落地）。
+- 关键文件：`rust-toolchain.toml`（新建）、`.node-version`（新建）、`scripts/lib/PreflightChecks.psm1`、`scripts/tests/preflight.Tests.ps1`、`README.md`、`PROJECT_STATUS.md`、`tasks/todo.md`
+- 接口/Schema 变化：无
+- 数据迁移：无
+- ADR/决策：无新增。MSVC 判定标准（VC 工具 + link.exe + SDK 三者齐备）沿用 Spec §3.3 与 D-5。
+- 验证命令与结果：
+  - `pnpm --version` → `12.4.2`；`uv --version` → `0.12.17`；`uv python list` → 含 `cpython-3.12.14`；`rustc --version --verbose` → `1.98.1`，`host: x86_64-pc-windows-msvc`；`cargo --version` → `1.98.1`
+  - `rustup show active-toolchain` → `1.98.1-x86_64-pc-windows-msvc (overridden by 'G:\LanguageTeacherAgent-English\rust-toolchain.toml')`
+  - `Invoke-Pester scripts/tests/preflight.Tests.ps1` → `Passed: 53 Failed: 0`
+  - `scripts/preflight.ps1`（刷新 PATH 后）→ 14 项 `ok=12 missing=1 unknown=1`，`VERDICT NotReady`，退出码 0
+  - `scripts/preflight.ps1 -RequireReady` → 退出码 **1**（因 `msvc`）
+  - `sha256sum` 双源比对 rustup-init → 三者一致
+- Eval/性能/Token 结果：不适用
+- 已知问题与风险：
+  - **安装副作用**：失败的 VS Build Tools 尝试（winget，退出码 143，未注册）在 `C:\Program Files (x86)\Microsoft Visual Studio\Installer\` 下留下 `vswhere.exe`（客观上让预检得以正确诊断），并留下不完整的 `...\2022\BuildTools\` 目录树。位于 Program Files 且需提权，可能与既有 VS 安装共享组件，**未自行删除**。
+  - winget/rustup 安装过程按其自身行为修改了用户 PATH（新增 winget 包目录与 `%USERPROFILE%\.cargo\bin`）；这是安装器的标准行为，不是脚本所为。
+  - `npm install -g pnpm` 在本机不可用（npm 全局前缀为 `F:\JAVA_Tools\NodeJs`，非提权不可写）。后续若需 npm 全局安装，应先与用户确认是否改 npm 前缀。
+  - `stable` 与 `1.98.1` 两个 Rust 工具链同时存在（约多占一份磁盘）；`1.98.1` 为默认且被仓库固定，`stable` 可在用户确认后移除。
+- 环境或密钥要求：无需密钥；未创建 `.env`。
+- 下一个 Agent 应先做：**在提权的 PowerShell 中安装 Windows SDK**（例如 `winget install --id=Microsoft.VisualStudio.2022.BuildTools -e --override "--wait --passive --add Microsoft.VisualStudio.Component.Windows11SDK.26100"`，或对既有 VS Community 2022 用 VS Installer 勾选「Windows 11 SDK」），随后重跑 `scripts/preflight.ps1 -RequireReady` 直到退出码 0，再继续 T010 的 Monorepo 骨架、锁文件与 CI。
 
 ### 2026-09-19 — README 文档基线（DONE）
 

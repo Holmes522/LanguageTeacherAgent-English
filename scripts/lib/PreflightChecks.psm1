@@ -27,7 +27,7 @@ $ErrorActionPreference = 'Continue'
 # Constants
 # ---------------------------------------------------------------------------
 
-$script:PreflightVersion = '2.0.0'
+$script:PreflightVersion = '2.0.1'
 $script:SchemaVersion = '1.0'
 $script:JsonSchemaFileName = 'preflight.schema.json'
 
@@ -59,12 +59,6 @@ $script:WebView2RegistryPaths = @(
     "HKLM:\SOFTWARE\WOW6432Node\Microsoft\EdgeUpdate\Clients\$($script:WebView2ClientGuid)",
     "HKLM:\SOFTWARE\Microsoft\EdgeUpdate\Clients\$($script:WebView2ClientGuid)",
     "HKCU:\Software\Microsoft\EdgeUpdate\Clients\$($script:WebView2ClientGuid)"
-)
-
-# vswhere.exe locations: the Visual Studio Installer ships it in these two places.
-$script:VswhereCandidates = @(
-    (Join-Path ${env:ProgramFiles(x86)} 'Microsoft Visual Studio\Installer\vswhere.exe'),
-    (Join-Path $env:ProgramFiles 'Microsoft Visual Studio\Installer\vswhere.exe')
 )
 
 $script:VcToolsComponent = 'Microsoft.VisualStudio.Component.VC.Tools.x86.x64'
@@ -186,13 +180,42 @@ function New-PreflightReport {
 # Real probes (the injectable seam). Tests replace these with fakes.
 # ---------------------------------------------------------------------------
 
+function Get-VswhereCandidatePaths {
+    <#
+    .SYNOPSIS
+        Candidate locations of vswhere.exe. The Visual Studio Installer ships it under the
+        32-bit Program Files root even on 64-bit Windows, so both roots are offered.
+    #>
+    [CmdletBinding()]
+    param()
+
+    $candidates = @()
+    foreach ($root in @(${env:ProgramFiles(x86)}, $env:ProgramFiles)) {
+        if (-not [string]::IsNullOrEmpty($root)) {
+            $candidates += (Join-Path $root 'Microsoft Visual Studio\Installer\vswhere.exe')
+        }
+    }
+    return $candidates
+}
+
 function Get-RealProbes {
     <#
     .SYNOPSIS
         Build the default probe set. Every probe is read-only.
+
+    .PARAMETER VswhereCandidates
+        vswhere.exe locations to probe. Defaults to Get-VswhereCandidatePaths; injectable so
+        the probe can be tested without depending on this machine's Visual Studio layout.
+
+    .NOTES
+        Each probe is a closure created with GetNewClosure(), which copies the *local*
+        variables in scope. Anything a probe needs must therefore be a local variable (a
+        parameter works); module-scope values are not visible from inside a closure.
     #>
     [CmdletBinding()]
-    param()
+    param([string[]]$VswhereCandidates = $null)
+
+    if ($null -eq $VswhereCandidates) { $VswhereCandidates = Get-VswhereCandidatePaths }
 
     $probes = @{}
 
@@ -218,7 +241,10 @@ function Get-RealProbes {
     $probes['Vswhere'] = {
         param($Arguments)
         $found = ''
-        foreach ($candidate in $script:VswhereCandidates) {
+        # $VswhereCandidates is the enclosing function's parameter, which GetNewClosure()
+        # captures. Do not read a $script:-scoped value here: it is not visible the moment
+        # this block is rebound into its own module.
+        foreach ($candidate in $VswhereCandidates) {
             if ($null -ne $candidate -and (Test-Path -LiteralPath $candidate -PathType Leaf -ErrorAction SilentlyContinue)) {
                 $found = $candidate
                 break
@@ -885,6 +911,7 @@ Export-ModuleMember -Function @(
     'New-PreflightCheck',
     'New-PreflightReport',
     'Get-PreflightExitCode',
+    'Get-VswhereCandidatePaths',
     'Get-RealProbes',
     'Test-ToolCommandCheck',
     'Test-NodeCheck',
