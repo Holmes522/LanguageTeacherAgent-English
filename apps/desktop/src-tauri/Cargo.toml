@@ -17,6 +17,11 @@ tauri = { version = "2", features = [] }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 jsonschema = { version = "0.56.0", default-features = false }
+# OS 凭据存储（T012 / SPEC-M00 §9.2）。Windows 上落在凭据管理器；密钥不写文件、不进日志。
+keyring = { version = "4.2.0", default-features = false, features = ["v1"] }
+# Sidecar 每次启动的随机 token（SPEC-M00 B-2）。只用来生成 32 字节，因此不带任何
+# 高档 API 特性。该 crate 本来就在依赖树里（tauri 的传递依赖），直接声明不新增节点。
+getrandom = { version = "0.3", default-features = false }
 
 [profile.release]
 codegen-units = 1

@@ -259,7 +259,7 @@ winget install --id Gitleaks.Gitleaks --version 8.30.1 -e
 |---|---|
 | 启动桌面应用（开发模式） | 待 M01 完成后补充 |
 | 打包 Windows 安装包 / 签名 | 待 T050 完成后补充 |
-| CI 流程（GitHub Actions） | 已跑通（[run #2](https://github.com/Holmes522/LanguageTeacherAgent-English/actions/runs/35431617828)，5/5）。**触发器是 PR**——`workflow_dispatch` 在本仓库不可用，因为工作流不在默认分支上（Actions API 只暴露默认分支的工作流） |
+| CI 流程（GitHub Actions） | 已跑通（[run #2](https://github.com/Holmes522/LanguageTeacherAgent-English/actions/runs/35431617828)，5/5）。按用户要求**只在关键时刻触发**：手动 Run workflow / 合并进 `main` / 把 draft PR 标记为 ready；纯文档改动不触发。手动触发需先把工作流合进 `main` 才会出现在 Actions 列表 |
 
 在对应任务落地并实测之前，README 不会写入这些命令。
 

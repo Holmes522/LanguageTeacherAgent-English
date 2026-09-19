@@ -11,13 +11,35 @@
 
 name: CI
 
+# 触发策略：只在"关键时刻"跑，不在开发过程中每次提交都跑。
+# 用户 2026-09-19 要求：开发期间不需要每个提交都触发 CI，只在关键节点跑。
+#
+# 三个关键时刻：
+#   1. 你主动触发 —— Actions 页面 → 本工作流 → Run workflow（`workflow_dispatch`）。
+#      注意：**该触发器需要本文件存在于默认分支才会出现在列表里**。当前工作流只在功能分支上，
+#      所以现在点不到它；把工作流合进 main 之后即可用。
+#   2. 合并进 main（`push: main`）—— 每个垂直切片合并时跑一次，验证 main 仍可发布。
+#   3. 把一个 draft PR 标记为 ready for review（`ready_for_review`）——
+#      这是最贴合当前工作方式的手动闸门：平时在 draft 上随便推，想验时点一下 Ready。
+#
+# 特别注意：这里**没有**列 `synchronize`，所以给已经 ready 的 PR 继续推提交不会再触发；
+# 想重跑就转回 draft 再标一次 Ready，或用 Run workflow。
+# 也因为没有 `opened`：**非 draft 的 PR 不会自动触发**（那是刻意的，但要知道）。
+#
+# 纯文档改动一律不触发：`.md`、`docs/**`、`tasks/**` 在 paths-ignore 里。
+# 本仓库相当一部分提交是状态/规格文档，让它们触发一次 5 分钟的运行没有意义。
 on:
+  workflow_dispatch:
   push:
     branches: [main]
   pull_request:
-  # 手动触发：新增或修改工作流后，可以在 Actions 页面直接验证它能否跑通，
-  # 不必先合并到 main，也不必先开 PR。这是"CI 在合入前就经过实测"的前提。
-  workflow_dispatch:
+    types: [ready_for_review]
+    paths-ignore:
+      - '**.md'
+      - 'docs/**'
+      - 'tasks/**'
+      - '.gitattributes'
+      - '.gitignore'
 
 # 最小权限：CI 只读仓库内容。secrets job 的 GITHUB_TOKEN 因此也无法评论 PR，
 # 这与 D-3"禁用 PR 评论"的要求互为第二层保障。

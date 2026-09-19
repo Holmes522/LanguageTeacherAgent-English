@@ -50,15 +50,9 @@ pub const CONTRACT_VERSION: &str = "v1";
 
 /// 已注册的错误码。与 error-codes.json 一一对应，由
 /// `registered_error_codes_match_the_registry` 断言，防止 Rust 侧与注册表漂移。
-///
-/// `#[allow(dead_code)]` 的理由：这里刻意列全 4 个码，而 M00 的运行时路径只用到 3 个
-/// （`INVALID_INPUT` 要等到有业务入参校验的模块才用得上）。完整性是刻意的——
-/// 让"允许出现的错误码"在 Rust 侧也有一个封闭集合，而不是让各模块自行拼字符串。
-#[allow(dead_code)]
 pub const CODE_INVALID_INPUT: &str = "ENGM.CONTRACT.INVALID_INPUT";
 pub const CODE_SCHEMA_INVALID: &str = "ENGM.CONTRACT.SCHEMA_INVALID";
 pub const CODE_VERSION_MISMATCH: &str = "ENGM.CONTRACT.VERSION_MISMATCH";
-#[allow(dead_code)]
 pub const CODE_INTERNAL_UNEXPECTED: &str = "ENGM.INTERNAL.UNEXPECTED";
 
 /// 契约错误。`details` 只承载诊断坐标，不承载用户内容。
@@ -109,6 +103,12 @@ impl ContractError {
         }
     }
 
+    /// 同 [`ContractError::version_mismatch`]，供需要在上报之后再复核一次的调用方使用
+    /// （例如健康检查：启动时协商过，但对端可能在此之前被换掉）。
+    pub fn version_mismatch_reported(remote: &str) -> Self {
+        Self::version_mismatch(remote)
+    }
+
     /// 契约自身有问题（schema 无法编译 / manifest 不可读）。属于内部错误，不是调用方的错。
     fn internal(message: impl Into<String>) -> Self {
         Self {
@@ -118,6 +118,51 @@ impl ContractError {
             details: None,
         }
     }
+
+    /// 调用方送来的请求在当前状态下不成立（缺凭据、未同意上云、字段越界等）。
+    ///
+    /// M00 固化的错误码里没有专门的「配置缺失」域，因此这里用 `INVALID_INPUT`：
+    /// 语义是「调用方不该发这个请求」，与 schema 校验失败区分开。
+    /// M03 的 Spec 落地时应补 `ENGM.LLM.*` 域，届时这里改成更精确的码。
+    pub fn invalid_input(message: impl Into<String>) -> Self {
+        Self {
+            code: CODE_INVALID_INPUT,
+            message: message.into(),
+            retryable: false,
+            details: None,
+        }
+    }
+
+    /// 本进程内部故障。文案由调用方给出，**不得**包含用户正文或密钥。
+    pub fn internal_error(message: impl Into<String>) -> Self {
+        Self::internal(message)
+    }
+
+    /// 渲染成失败信封（`LocalResponse` 的失败形态）。
+    ///
+    /// 返回 `Value` 而不是结构体：出站前都要过 [`validate_boundary`]，
+    /// 让"我们能构造出什么"和"契约允许什么"由同一个校验器对齐。
+    pub fn to_envelope(&self, request_id: &str) -> Value {
+        let mut error = json!({
+            "code": self.code,
+            "message": self.message,
+            "retryable": self.retryable,
+        });
+        if let Some(details) = &self.details {
+            error["details"] = details.clone();
+        }
+        json!({ "ok": false, "requestId": request_id, "error": error })
+    }
+}
+
+/// 渲染成功信封。`citations` 必填（无来源时显式空数组），见 envelope.schema.json。
+pub fn success_envelope(request_id: &str, data: Value, citations: Vec<Value>) -> Value {
+    json!({
+        "ok": true,
+        "requestId": request_id,
+        "data": data,
+        "citations": citations,
+    })
 }
 
 /// 四条校验边界（SPEC-M00 §5.3 表格）。
@@ -312,8 +357,7 @@ mod tests {
     }
 
     #[test]
-    fn version_negotiation_accepts_the_current_version() {
-        let reported = json!({
+    fn version_negotiation_accepts_the_current_version() {        let reported = json!({
             "contractVersion": CONTRACT_VERSION,
             "schemaIds": ["https://engmentor.local/contracts/v1/envelope.schema.json"]
         });
@@ -358,6 +402,40 @@ mod tests {
             let error = validate_boundary(Boundary::WebviewToRust, &case).expect_err("必须被拒绝");
             assert_eq!(error.code, CODE_SCHEMA_INVALID);
         }
+    }
+
+    // -----------------------------------------------------------------------
+    // 出站信封的构造（IPC 命令层用）
+    // -----------------------------------------------------------------------
+
+    /// 命令层构造出来的失败信封必须自己就能过契约校验 —— 否则"我们返回的东西"
+    /// 和"契约允许的东西"会悄悄分叉。
+    #[test]
+    fn constructed_failure_envelopes_pass_their_own_validation() {
+        let errors = [
+            ContractError::invalid_input("未配置凭据"),
+            ContractError::internal_error("上游返回了无法解析的响应"),
+        ];
+        for error in errors {
+            let envelope = error.to_envelope("req-1");
+            assert_eq!(
+                envelope["error"]["code"].as_str(),
+                Some(error.code),
+                "信封里的错误码应与 ContractError 一致"
+            );
+            validate_boundary(Boundary::RustToWebview, &envelope)
+                .unwrap_or_else(|e| panic!("自造的失败信封未过校验：{e:?}"));
+        }
+    }
+
+    #[test]
+    fn constructed_success_envelopes_pass_their_own_validation() {
+        let envelope = success_envelope("req-1", json!({ "hello": "world" }), vec![]);
+        validate_boundary(Boundary::RustToWebview, &envelope).expect("自造的成功信封应过校验");
+
+        // citations 必填：省略它必须被拒（"无来源"与"忘了带"要能区分）。
+        let missing_citations = json!({ "ok": true, "requestId": "r", "data": null });
+        assert!(validate_boundary(Boundary::RustToWebview, &missing_citations).is_err());
     }
 
     // -----------------------------------------------------------------------

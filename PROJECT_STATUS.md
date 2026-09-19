@@ -129,7 +129,11 @@
 - 入库安全扫描：暂存内容无密钥、真实用户数据、未授权词典内容、模型权重或构建产物；工作区无二进制文件与超过 200 KB 的大文件。
 - 源码：已创建（T010-A 空骨架；`apps/desktop`、`packages/contracts`、`services/ai-core`、`scripts/`）。
 - 测试：已创建（T010-A：vitest + pytest + cargo test；T010-B 前另有 Pester 53 项）。
-- CI：已在 GitHub 上**真实运行并通过**（2026-09-19，[run #2](https://github.com/Holmes522/LanguageTeacherAgent-English/actions/runs/35431617828)，head `7a6a4d5`，5/5 job 成功，耗时 4.8 分钟）：`web` 80s、`python` 33s、`rust` 160s、`contracts` 286s、`secrets` 19s。run #1（`c2f7a46`）为首次运行，暴露出 2 个只有真实 runner 才显现的问题，修复后第二次运行全绿。**触发器为 `pull_request`：`workflow_dispatch` 在本仓库不可用**（Actions API 只暴露默认分支上存在的工作流，而 `ci.yml` 只在功能分支上；实测 `total_count=0`、dispatch 返回 404）。因此仓库当前有一个 **draft PR #1** 用于承载 PR 触发器。
+- CI：已在 GitHub 上**真实运行并通过**（2026-09-19，[run #2](https://github.com/Holmes522/LanguageTeacherAgent-English/actions/runs/35431617828)，head `7a6a4d5`，5/5 job 成功，耗时 4.8 分钟）：`web` 80s、`python` 33s、`rust` 160s、`contracts` 286s、`secrets` 19s。run #1（`c2f7a46`）为首次运行，暴露出 2 个只有真实 runner 才显现的问题，修复后第二次运行全绿。**触发策略已按用户 2026-09-19 要求收紧为"只在关键时刻跑"**：`workflow_dispatch`（你主动 Run workflow）、
+  `push(main)`（合并时跑一次）、`pull_request: types: [ready_for_review]`（把 draft 标记为 ready 即触发，
+  这是当前最顺手的手动闸门），且 `paths-ignore` 掉纯文档改动。**已知限制**：`workflow_dispatch` 需要
+  `ci.yml` 存在于默认分支才可用（实测 `total_count=0`、dispatch 404），因此现在点不到它——**把 draft PR #1
+  合并进 `main` 即可解锁**；另外非 draft 的 PR 与已 ready 后的后续提交都不会自动触发。
 - 已就绪的 Spec：[`docs/specs/SPEC-M00-foundation-contracts.md`](docs/specs/SPEC-M00-foundation-contracts.md)（**v1.5**；v1.1 已复核通过，v1.2 增补 README 文档基线 AC-15～AC-18，v1.3 增补 §8 CI 落地契约与 §8.1 固定 SHA，v1.4 记录 T011 的契约来源/生成链路/运行时校验，v1.5 记录首次真实 CI 运行后的两项修正）。
 - 文档基线：[`README.md`](README.md) 已建立（Living README，Pre-alpha 状态如实声明，用户使用指南按 10 个固定小节预留为"待实现"占位，不含未实现命令、虚构截图或下载地址）。维护规则见 [`AGENTS.md`](AGENTS.md)「README 维护规则」：README 与实际产品不一致时模块不得标记 `DONE`。
 - 本机工具链（2026-09-19 已安装并固定版本）：

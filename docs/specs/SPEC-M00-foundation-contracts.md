@@ -327,10 +327,19 @@ B-4 不依赖单一机制，三层各自独立可测、任一失效仍不放开�
 
 文件：`.github/workflows/ci.yml`
 
-- 触发：`push`（`main`）、`pull_request`，以及 **`workflow_dispatch`**。
-  `workflow_dispatch` 是 T010-B 的增补：本仓库当时既不允许创建 PR，也不允许推 `main`，若只有前两个触发器，
-  工作流将**没有任何一次远程运行记录**，等于交付一个从未被证明能跑的文件。手动触发让作者可以在
-  Actions 页面独立验证它，而不必先改变分支或 PR 的状态。
+- 触发（**2026-09-19 按用户要求收紧为"只在关键时刻跑"**）：`workflow_dispatch`、`push`（`main`）、
+  以及 `pull_request: types: [ready_for_review]`（并带 `paths-ignore`：`**.md`、`docs/**`、`tasks/**`、
+  `.gitattributes`、`.gitignore`）。
+  三个关键时刻是：**① 你主动在 Actions 页面 Run workflow；② 合并进 `main`；③ 把 draft PR 标记为 ready
+  for review**（这是最贴合当前工作方式的手动闸门——平时在 draft 上随便推，想验时点一下 Ready）。
+  纯文档改动一律不触发：本仓库相当一部分提交是状态与规格文档，让它们触发一次 5 分钟的运行没有意义。
+  两个必须知道的限制：**(a) `workflow_dispatch` 只有在 `ci.yml` 存在于默认分支后才会出现在 Actions 列表里**
+  （实测：工作流仅在功能分支上时 `GET /actions/workflows → total_count = 0`、dispatch 返回 404）；
+  **(b) 因为未列 `opened`，非 draft 的 PR 不会自动触发**，且未列 `synchronize`，给已 ready 的 PR 继续推提交
+  也不会重跑——想重跑就转回 draft 再标一次 Ready，或用 Run workflow。
+  历史说明：最初的触发器是 `push(main)` + `pull_request`（全量），那时本仓库既不允许开 PR 也不允许推 `main`，
+  工作流因此**一次都没跑过**；T010-B 增补 `workflow_dispatch` 以打破这个死锁，随后首次真实运行暴露并修好了
+  两个只有真实 runner 才显现的问题。
 - 权限：`permissions: contents: read`（最小）。该权限同时使 `secrets` job 拿到的 `GITHUB_TOKEN`
   无法评论 PR，与 D-3 的"关闭 PR 评论"互为第二层保障。
 - 并发：同一 ref 的新运行取消旧运行（`cancel-in-progress`）。

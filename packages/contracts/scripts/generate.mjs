@@ -317,6 +317,17 @@ const manifest = {
 }
 writeFileSync(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`, 'utf8')
 
+/**
+ * 同一份 manifest 也放进 Python 包。
+ *
+ * 原因：Python 侧的 Sidecar 启动时要按 version.schema.json 上报自己支持的 schema $id 集合
+ * （SPEC-M00 §5.3 第 5、6 条）。如果那份清单在 Python 里另写一遍，它就成了第二份契约来源，
+ * 而"某侧落后于契约包"正是这条检查要发现的问题 —— 手抄的清单永远发现不了自己落后。
+ * 放进包里的这一份仍在 check-drift.mjs 的生成物路径内，因此同样受漂移检查约束。
+ */
+const pyManifestPath = join(pyPackageRoot, 'schema-manifest.json')
+writeFileSync(pyManifestPath, `${JSON.stringify(manifest, null, 2)}\n`, 'utf8')
+
 // ---------------------------------------------------------------------------
 
 const rel = (p) => relative(repoRoot, p).replace(/\\/g, '/')
@@ -326,6 +337,7 @@ console.log(`  错误码（${registryCodes.length}）: ${registryCodes.join(', '
 console.log(`  TS 生成物: ${rel(tsOutDir)}/  (${tsFiles.length + 1} 个文件)`)
 console.log(`  Python 生成物: ${rel(pyOutDir)}/`)
 console.log(`  manifest: ${rel(manifestPath)}`)
+console.log(`  manifest（Python 包内副本，供 Sidecar 版本上报）: ${rel(pyManifestPath)}`)
 if (!existsSync(join(contractsRoot, 'python', 'pyproject.toml'))) {
   console.warn('  [warn] packages/contracts/python/pyproject.toml 不存在 —— Python 契约包无法安装')
 }
