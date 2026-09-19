@@ -1,11 +1,11 @@
 # 英语老师 AI Agent 桌面客户端任务清单
 
-> 当前状态：T000 已完成（含 2026-09-19 GitHub 安全同步，`main` @ `ddd16be`）；M00 Spec 已按用户审阅结论修订为 v1.1，见 [`docs/specs/SPEC-M00-foundation-contracts.md`](../docs/specs/SPEC-M00-foundation-contracts.md)，**待复核**。先完整阅读 [`PROJECT_STATUS.md`](../PROJECT_STATUS.md)。每完成一个模块或垂直切片，必须同步更新 `PROJECT_STATUS.md`。
+> 当前状态：T000 已完成（含 2026-09-19 GitHub 安全同步，`main` @ `ddd16be`）；M00 Spec v1.1 **已复核通过**（见 [`docs/specs/SPEC-M00-foundation-contracts.md`](../docs/specs/SPEC-M00-foundation-contracts.md)）；T010 进行中——工具链预检已交付并运行，**安装未开始，T010 未完成**。先完整阅读 [`PROJECT_STATUS.md`](../PROJECT_STATUS.md)。每完成一个模块或垂直切片，必须同步更新 `PROJECT_STATUS.md`。
 >
 > **执行顺序（2026-09-19 用户裁定）**：工具链预检与安装 → `M00（T010–T012）` → `T001–T005` 风险 Spike → `Checkpoint A` → Phase 2 及之后的业务模块。
 > 说明：M00 是 Spike 的载体（Spike 证据需要 Monorepo、CI、契约信封与锁文件才能复现），因此 **M00 先于 Spike**；本清单把原 Phase 0（Spike）与原 Phase 1（工程地基）合并为 **Phase 0**，Phase 2 起的编号与统一方案一致。`Checkpoint A` 只门控 Phase 2 及之后的业务模块，不再门控 T010–T012。
 >
-> 门控：Spec v1.1 复核通过前，不安装依赖、不生成 Tauri 脚手架、不开始编码。
+> 门控：**安装软件前必须获得用户对安装方案的确认**；在此之前不安装依赖、不生成 Tauri 脚手架、不开始编码。
 
 ## Phase 0：工程地基与风险验证
 
@@ -13,14 +13,17 @@
 
 #### T010：创建 Monorepo 与 CI
 
-- [ ] 运行工具链预检（Spec §3.2）：Node、pnpm、uv、Python 3.12、Rust（MSVC）、MSVC C++ Build Tools、WebView2、VBSCRIPT；逐项公开结果。
-- [ ] 安装并固化版本：pnpm、uv、Rust（`rust-toolchain.toml` 提交精确版本号，不得只写 `stable`）；记录 MSVC 与 WebView2 实际版本。
+> 状态：**进行中，未完成**。第一小步（工具链预检）已交付；安装、骨架、锁文件与 CI 均未开始。
+
+- [x] 交付并运行工具链预检：`scripts/preflight.ps1` + `scripts/tests/preflight.Tests.ps1`（Pester 29 项通过，自检 28 项通过）。逐项结果见 `PROJECT_STATUS.md` §8。
+- [ ] **安装并固化版本**（等待用户确认安装方案）：pnpm、uv、Python 3.12、Rust（`rust-toolchain.toml` 提交精确版本号，不得只写 `stable`）、MSVC C++ Build Tools；安装后重跑预检至 Blocking 全绿。
 - [ ] 建立 Tauri/React、Python AI Core、contracts 和测试目录。
-- [ ] 落地 `.gitattributes`（统一 LF）、`.node-version`、`.npmrc`、`.env.example`、`.gitleaks.toml`、`scripts/preflight.ps1`。
+- [ ] 落地 `.gitattributes`（统一 LF）、`.node-version`、`.npmrc`、`.env.example`、`.gitleaks.toml`。
 - [ ] 配置 pnpm、uv、Rust 锁文件与 GitHub Actions 最小 CI（5 个 job，Windows runner）。
+- 预检现状（2026-09-19）：已就绪 Git 2.51.0 / Node v22.20.0 / npm 10.9.3 / Corepack 0.34.0 / WebView2 153.0.4234.32；缺失 pnpm、uv、Python 3.12、rustc、cargo；无法判定 msvc（无 `vswhere.exe`）与 vbscript（需提权，且仅为 MSI 前置项）。
 - 验收：Spec AC-1、AC-2、AC-6、AC-10、AC-12 通过；空骨架在 Windows CI 完整构建。
 - 验证：`pnpm install --frozen-lockfile`、`uv sync --locked --project services/ai-core`、`uv lock --check --project services/ai-core`、`cargo build --locked`；`pnpm lint`、`pnpm typecheck`、`pnpm test`、`pnpm build` 全绿。
-- 依赖：M00 Spec v1.1 复核通过 + 工具链预检通过。
+- 依赖：M00 Spec v1.1（已复核通过）+ 工具链预检（已运行；安装待确认）。
 
 #### T011：实现版本化本地契约
 

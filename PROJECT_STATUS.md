@@ -37,13 +37,13 @@
 | 字段 | 当前值 |
 |---|---|
 | Agent/负责人 | ZCode（用户 Holmes 授权） |
-| 当前任务 | M00 Spec 审阅修订：`docs/specs/SPEC-M00-foundation-contracts.md` v1.1（待复核） |
-| 当前模块 | `M00-foundation-contracts`（Spec 修订阶段，未开始编码） |
+| 当前任务 | T010 第一小步：工具链预检脚本已实现并运行（**等待用户确认安装方案；未安装任何软件**） |
+| 当前模块 | `M00-foundation-contracts`（T010 进行中，未完成） |
 | 分支 | `feat/M00-foundation-contracts`（基于 `origin/main` @ `ddd16be`） |
-| 状态 | `IN_PROGRESS`（Spec v1.1 待复核；复核通过前不安装、不编码） |
+| 状态 | `IN_PROGRESS`（Spec v1.1 已复核通过；预检已完成；安装未开始） |
 | 开始时间 | 2026-09-19 |
-| 计划修改文件 | `docs/specs/SPEC-M00-foundation-contracts.md`、`PROJECT_STATUS.md`、`tasks/todo.md`、`tasks/plan.md`、`docs/英语老师AI-Agent-统一产品与技术开发方案.md` |
-| 下一检查点 | Spec v1.1 复核通过 → 运行 `scripts/preflight.ps1` 工具链预检 → 安装并固化 pnpm/uv/Rust → 执行 T010 |
+| 计划修改文件 | `scripts/preflight.ps1`、`scripts/tests/preflight.Tests.ps1`、`.gitignore`、`PROJECT_STATUS.md`、`tasks/todo.md` |
+| 下一检查点 | 用户确认安装方案 → 安装并固化 pnpm / uv / Python 3.12 / Rust(MSVC) / MSVC Build Tools → 继续 T010（Monorepo、锁文件、CI） |
 
 **执行顺序（2026-09-19 用户裁定，替代此前冲突描述）**：工具链预检与安装（T010 的第一步）→ `M00（T010–T012）` → `T001–T005` 风险 Spike → `Checkpoint A` → Phase 1 及之后的业务模块。M00 不再排在 Spike 之后。
 
@@ -53,7 +53,7 @@
 
 | 模块 ID | 模块 | 优先级 | 状态 | 最后验证 | 证据/PR | 下一步 |
 |---|---|:---:|---|---|---|---|
-| `M00-foundation-contracts` | Monorepo、契约、CI、ADR 与规则 | P0 | IN_PROGRESS | 2026-09-19 Q1–Q8 已确认；Spec v1.1 已修订待复核；`main` @ `ddd16be` 已同步 | [`SPEC-M00`](docs/specs/SPEC-M00-foundation-contracts.md)、[`T000 决策`](docs/decisions/T000-产品边界与技术决策建议.md) | 复核 Spec v1.1 → 工具链预检与安装 → T010–T012（**先于** T001–T005 Spike） |
+| `M00-foundation-contracts` | Monorepo、契约、CI、ADR 与规则 | P0 | IN_PROGRESS | 2026-09-19 Spec v1.1 已复核通过；工具链预检已运行（13 项：ok=5 missing=6 unknown=2） | [`SPEC-M00`](docs/specs/SPEC-M00-foundation-contracts.md)、`scripts/preflight.ps1` | 用户确认安装方案 → 安装 pnpm/uv/Python3.12/Rust+MSVC → 完成 T010–T012（**先于** T001–T005 Spike） |
 | `M01-desktop-shell` | Tauri 桌面壳、Sidecar、安装更新 | P0 | NOT_STARTED | — | — | Sidecar Spike |
 | `M02-local-storage-settings` | SQLite、迁移、设置、密钥 | P0 | NOT_STARTED | — | — | 等待 M00/M01 |
 | `M03-llm-gateway` | DeepSeek、流式、结构化输出、预算 | P0 | NOT_STARTED | — | — | DeepSeek Spike |
@@ -120,7 +120,14 @@
 - CI：尚未创建。
 - 已就绪的 Spec：[`docs/specs/SPEC-M00-foundation-contracts.md`](docs/specs/SPEC-M00-foundation-contracts.md)（**v1.1**，已按用户 2026-09-19 审阅结论修订，待复核）。
 - 本机工具链基线（2026-09-19 只读核对）：Git 2.51.0.windows.1（`core.autocrlf` 生效，工作区 CRLF/仓库 LF，待 `.gitattributes` 统一）；Node v22.20.0 ✅；npm 10.9.3（仅引导）；**pnpm 未安装**；系统 Python 3.13.7（项目固定 3.12，由 uv 管理，**不使用系统解释器**）；**uv 未安装**；**Rust/Cargo 未安装**；**MSVC C++ Build Tools 未核对**；**WebView2 Runtime 未核对**；**VBSCRIPT 按需功能未核对**。
-- 工具链预检：清单见 Spec §3.2，脚本 `scripts/preflight.ps1` 于 T010 落地；预检必须在安装与编码之前完成并公开逐项结果。
+- 工具链预检脚本：`scripts/preflight.ps1`（只读、无副作用）+ `scripts/tests/preflight.Tests.ps1`。清单见 Spec §3.2；必须在安装与编码之前完成并公开逐项结果。
+- 预检执行结果（2026-09-19，报告模式，退出码 0；共 13 项：ok=5 missing=6 unknown=2）：
+  - **已就绪**：Git `2.51.0.windows.1`；Node `v22.20.0`；npm `10.9.3`；Corepack `0.34.0`；**WebView2 Runtime `153.0.4234.32`**（已预装）。
+  - **缺失（Blocking，T010 前置）**：`pnpm`、`uv`、`python312`（现有解释器为 3.13.7，不是项目解释器）、`rustc`、`cargo`。
+  - **无法判定（Blocking）**：`msvc` —— 未找到 `vswhere.exe`，故 MSVC C++ Build Tools 既不能确认也不能否证。
+  - **无法判定（Advisory）**：`vbscript` —— `Get-WindowsCapability -Online` 需要提权；`System32\vbscript.dll` 存在，但仅凭文件存在不能证明按需功能已启用。**仅 MSI 打包前置项，非当前开发硬阻塞。**
+  - JSON 报告写入 `tmp/preflight/`（已被 `.gitignore` 忽略），不污染仓库。
+- 安装尚未执行：本阶段未安装任何软件，未修改环境变量、注册表、Git 配置或用户 Profile。
 - 已有规划文档：统一方案、实施计划、任务清单和两份历史方案。
 - 未授权事项（勿自行执行）：分支保护、PR 创建、`gh` CLI 安装与认证、Actions 首次运行、安装依赖与生成脚手架（须在 M00 Spec 获批后）。
 
@@ -175,6 +182,39 @@
 ```
 
 ## 11. 交接记录
+
+### 2026-09-19 — T010 第一小步：工具链预检（IN_PROGRESS，等待安装方案确认）
+
+- Agent/负责人：ZCode（用户 Holmes 授权）
+- 状态：IN_PROGRESS（**T010 未完成**；本小步仅交付预检脚本与预检结果，未安装任何软件）
+- 分支：`feat/M00-foundation-contracts`
+- Commit/PR：本分支提交；未创建 PR（用户未授权），未 push `main`，未 force push
+- 完成内容：
+  - 新增 `scripts/preflight.ps1`（v1.0.0）：只读、无副作用的环境盘点。不执行 winget/choco/npm install/corepack enable/rustup update；不修改环境变量、注册表、Git 配置或用户 Profile；不读取或输出任何密钥。
+  - 三种运行模式：默认报告模式（工具缺失也输出完整盘点，退出码恒为 0）、`-RequireReady`（Blocking 项未就绪时退出码 1）、`-SelfTest`（用假探针跑四个场景）。
+  - 输出人类可读摘要 + 机器可读 JSON；JSON 写入 `tmp/preflight/`（已被 `.gitignore` 忽略），`-NoJson` 可完全禁用写入。
+  - 新增 `scripts/tests/preflight.Tests.ps1`：29 个 Pester 测试，覆盖「工具存在」「工具缺失」「vswhere 不存在」「注册表项缺失」四类路径，并含只读性静态断言与「报告不含密钥字段」断言。
+  - `.gitignore` 忽略 ZCode 客户端生成的 `.zcodeignore`（IDE 本地文件，未入库）。
+- 未完成内容：**安装与固化 pnpm / uv / Python 3.12 / Rust(MSVC) / MSVC Build Tools 均未执行**；Monorepo 骨架、`.gitattributes`、锁文件、CI 均未创建；T010 其余部分未开始。
+- 关键文件：`scripts/preflight.ps1`、`scripts/tests/preflight.Tests.ps1`、`.gitignore`、`PROJECT_STATUS.md`、`tasks/todo.md`
+- 接口/Schema 变化：无
+- 数据迁移：无
+- ADR/决策：无新增。预检暴露 6 项缺失与 2 项无法判定，安装方案需用户确认后再执行。
+- 验证命令与结果：
+  - `powershell -NoProfile -ExecutionPolicy Bypass -File scripts/preflight.ps1 -SelfTest` → `passed=28 failed=0`，退出码 0
+  - `... -File scripts/preflight.ps1` → 报告模式输出 13 项检查，`ok=5 missing=6 unknown=2`，`VERDICT NotReady`，**退出码 0**（缺失项不被误判为脚本故障）
+  - `... -File scripts/preflight.ps1 -RequireReady -NoJson -Quiet` → **退出码 1**
+  - `Invoke-Pester scripts/tests/preflight.Tests.ps1` → `Passed: 29 Failed: 0`
+  - `git check-ignore -v tmp/preflight/*.json` → 命中 `.gitignore:106:tmp/`，JSON 报告不入库
+  - `git status --short` → 仅 `scripts/`、`.gitignore`、文档变更，无临时产物入库
+- Eval/性能/Token 结果：不适用（无代码、无 LLM 调用）
+- 已知问题与风险：
+  - 6 项 Blocking 缺失（pnpm、uv、python312、rustc、cargo）与 2 项无法判定（msvc、vbscript）需在安装阶段解决；其中 `msvc` 因未找到 `vswhere.exe` 无法判定，安装 VS Build Tools 后应重跑预检确认。
+  - `vbscript` 需在**提权** shell 中重跑才能判定；它只是 MSI 打包前置项，不阻塞 T010。
+  - 预检脚本的输出为 ASCII，避免 Windows PowerShell 5.1 在中文代码页下的编码问题。
+  - Pester 测试使用 v3 断言语法（`Should Be`），因为本机仅有 Pester 3.4.0；升级到 Pester ≥ 4 时需转换为 `Should -Be`（该转换只涉及测试文件，文件头已注明）。
+- 环境或密钥要求：无需任何密钥；未创建 `.env`。
+- 下一个 Agent 应先做：等待用户确认安装方案；确认后先安装并固化 `pnpm`、`uv`、Python 3.12、Rust（MSVC，`rust-toolchain.toml` 写精确版本号）与 MSVC Build Tools，再重跑预检至 Blocking 全绿，然后继续 T010 骨架与 CI。
 
 ### 2026-09-19 — M00 Spec 审阅修订（READY_FOR_REVIEW）
 

@@ -132,6 +132,7 @@ junit*.xml
 !.vscode/extensions.json
 .claude/settings.local.json
 .claude/*.local.json
+.zcodeignore
 *.swp
 *.swo
 *~
