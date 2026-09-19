@@ -225,6 +225,7 @@ TS 与 Python 侧由生成类型 + 校验库保证，Rust 侧不做类型生成�
 4. 校验失败返回 `ENGM.CONTRACT.SCHEMA_INVALID`，**不 panic、不静默透传**；错误详情只包含 schema `$id`、实例路径与失败关键字，**不得**包含用户正文。
 5. 契约版本协商：Sidecar 启动时按 `version.schema.json` 上报契约版本；主进程与 Sidecar 版本不一致时返回 `ENGM.CONTRACT.VERSION_MISMATCH` 并拒绝服务，而不是继续运行。
 6. 嵌入完整性：生成脚本产出 `schema-manifest.json`（schema 文件清单 + SHA-256）。Rust 侧在测试中断言嵌入集合与 manifest 完全一致，防止 Rust 落后于契约包。
+   同一份 manifest 也会被写在 `packages/contracts/python/src/engm_contracts/schema-manifest.json`（T012 增补）：Sidecar 启动时要按 `version.schema.json` 上报自己支持的 schema `$id` 集合，而**手抄一份清单等于第二份契约来源**，恰是这条检查要暴露的问题。该副本位于 `check-drift.mjs` 的生成物路径内，同样只由生成脚本写、同样受漂移检查约束。
 7. 三向一致性测试：`packages/contracts/tests/fixtures/` 的同一组正/反例必须被 **TS、Python、Rust 三方**得出相同结论（§10 AC-4）。
 
 ### 5.4 WebView 无外网的三层防护

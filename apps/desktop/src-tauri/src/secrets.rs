@@ -185,10 +185,10 @@ mod tests {
         let store = InMemorySecretStore::new();
         assert_eq!(store.get(DEEPSEEK_API_KEY).unwrap(), None);
 
-        store.set(DEEPSEEK_API_KEY, "sk-not-a-real-key").unwrap();
+        store.set(DEEPSEEK_API_KEY, "engm-test-sentinel").unwrap();
         assert_eq!(
             store.get(DEEPSEEK_API_KEY).unwrap().as_deref(),
-            Some("sk-not-a-real-key")
+            Some("engm-test-sentinel")
         );
 
         store.delete(DEEPSEEK_API_KEY).unwrap();
@@ -202,7 +202,7 @@ mod tests {
     /// 载荷就会立刻失败。
     #[test]
     fn error_descriptions_never_leak_the_secret_payload() {
-        let secret = "sk-live-SECRET-0123456789";
+        let secret = "engm-test-sentinel";
         let errors = [
             keyring::Error::BadEncoding(secret.as_bytes().to_vec()),
             keyring::Error::BadDataFormat(
@@ -239,7 +239,10 @@ mod tests {
             .duration_since(std::time::UNIX_EPOCH)
             .expect("系统时间应晚于 UNIX 纪元")
             .as_nanos();
-        let store = OsKeychainStore::new(format!("engmentor-selftest-{}-{unique}", std::process::id()));
+        let store = OsKeychainStore::new(format!(
+            "engmentor-selftest-{}-{unique}",
+            std::process::id()
+        ));
         let _cleanup = Cleanup(&store);
 
         store

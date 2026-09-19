@@ -35,7 +35,11 @@ from english_teacher.sidecar.server import (
 )
 
 TOKEN = "b" * 64
-API_KEY = "sk-live-SECRET-abcdef0123456789"
+# 刻意**不写成密钥的形态**（不是 `sk-...`、也不带高熵尾巴）。
+# 理由：`pnpm check:secrets` 用 gitleaks 扫全量历史，像真凭据的字符串会被
+# generic-api-key 命中，让这道门禁失败。正确做法是别写出像凭据的测试数据，
+# 而不是给扫描器开例外 —— `.gitleaks.toml` 至今零例外，要保住这一点。
+API_KEY = "engm-test-sentinel-not-a-credential"
 
 
 def user_turn(text: str = "hi", request_id: str = "req-1") -> dict[str, Any]:

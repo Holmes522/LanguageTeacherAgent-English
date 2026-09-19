@@ -76,7 +76,12 @@ impl LoopbackClient {
     }
 
     /// 发一个请求并返回尚未读完的响应。
-    pub fn send(&self, method: Method, path: &str, body: Option<&Value>) -> Result<Response, HttpError> {
+    pub fn send(
+        &self,
+        method: Method,
+        path: &str,
+        body: Option<&Value>,
+    ) -> Result<Response, HttpError> {
         // 路径由本仓库的常量提供，仍然挡一次：CRLF 注入请求行的代价太低，防御成本也低。
         if path.contains(['\r', '\n']) {
             return Err(HttpError::new("请求路径包含非法字符"));
@@ -91,8 +96,12 @@ impl LoopbackClient {
         };
 
         let address = SocketAddr::from((Ipv4Addr::LOCALHOST, self.port));
-        let stream = TcpStream::connect_timeout(&address, CONNECT_TIMEOUT)
-            .map_err(|e| HttpError::new(format!("无法连接到 Sidecar（127.0.0.1:{}）：{e}", self.port)))?;
+        let stream = TcpStream::connect_timeout(&address, CONNECT_TIMEOUT).map_err(|e| {
+            HttpError::new(format!(
+                "无法连接到 Sidecar（127.0.0.1:{}）：{e}",
+                self.port
+            ))
+        })?;
         stream
             .set_read_timeout(Some(READ_TIMEOUT))
             .map_err(|e| HttpError::new(format!("无法设置读超时：{e}")))?;

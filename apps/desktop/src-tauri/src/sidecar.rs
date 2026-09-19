@@ -161,7 +161,10 @@ struct SlotInner {
 
 impl SidecarSlot {
     /// 取得一个可用的 Sidecar；没有、已经退出、或配置变了就重新起一个。
-    pub fn acquire(&self, spec: &LaunchSpec) -> Result<std::sync::Arc<SidecarHandle>, SidecarError> {
+    pub fn acquire(
+        &self,
+        spec: &LaunchSpec,
+    ) -> Result<std::sync::Arc<SidecarHandle>, SidecarError> {
         let mut inner = self.inner.lock().expect("Sidecar 槽锁不应中毒");
 
         if let Some(handle) = inner.handle.take() {
@@ -363,8 +366,7 @@ fn handshake_payload(spec: &LaunchSpec, token: &str) -> Value {
 
 fn random_token() -> Result<String, SidecarError> {
     let mut bytes = [0u8; TOKEN_BYTES];
-    getrandom::fill(&mut bytes)
-        .map_err(|e| SidecarError::new(format!("无法获取随机数：{e}")))?;
+    getrandom::fill(&mut bytes).map_err(|e| SidecarError::new(format!("无法获取随机数：{e}")))?;
     // 十六进制编码：交给子进程的是纯 ASCII，不涉及编码歧义。
     Ok(bytes.iter().map(|byte| format!("{byte:02x}")).collect())
 }
@@ -424,12 +426,15 @@ mod tests {
     #[test]
     fn launch_spec_debug_never_prints_the_api_key() {
         let spec = LaunchSpec::from_parts(
-            Some("sk-live-SECRET-0123456789".to_string()),
+            Some("engm-test-sentinel-0123456789".to_string()),
             "https://api.deepseek.com".to_string(),
             "deepseek-flash".to_string(),
         );
         let rendered = format!("{spec:?}");
-        assert!(!rendered.contains("sk-live-SECRET-0123456789"), "{rendered}");
+        assert!(
+            !rendered.contains("engm-test-sentinel-0123456789"),
+            "{rendered}"
+        );
         assert!(rendered.contains("已隐去"));
     }
 
@@ -438,7 +443,8 @@ mod tests {
         // 与 Python 侧 StartupConfig 的别名集合逐字对应
         // （那一侧有 test_startup_config_wire_names_are_camel_case）。
         // 两侧各一条，任何一侧改名都会让另一侧失败。
-        let payload = handshake_payload(&LaunchSpec::from_parts(None, "u".into(), "m".into()), "tok");
+        let payload =
+            handshake_payload(&LaunchSpec::from_parts(None, "u".into(), "m".into()), "tok");
         let object = payload.as_object().expect("握手负载是对象");
         let mut keys: Vec<&str> = object.keys().map(String::as_str).collect();
         keys.sort_unstable();

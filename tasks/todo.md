@@ -55,11 +55,37 @@
 
 #### T012：实现设置和密钥存储
 
-- [ ] 模型、数据目录、隐私模式和知识库设置。
-- [ ] DeepSeek/Oxford 凭据存入安全存储。
-- 验收：UI 不能读取完整密钥；日志和数据库中没有密钥。
-- 验证：E2E + `pnpm check:secrets`。
-- 依赖：T011。
+> 状态：**最小版本已完成**（2026-09-19，用户直令的「本机可用」切片）。验收项、验证方式与
+> 缺口登记见 `PROJECT_STATUS.md` 最新交接记录；真实用户验收待做。
+
+- [x] 模型与隐私模式设置：模型 id、服务地址、上云同意开关（Q5 的 opt-in，默认关闭，可随时关闭）。
+  - 落在 `%APPDATA%\EngMentor\settings.json`，原子写；有测试断言序列化结果里**只有 3 个键**、不含任何密钥字段。
+  - 「知识库设置」与「数据目录」仍待做（属 M02 的 SQLite 部分）。
+- [x] DeepSeek 凭据存入安全存储：Windows 凭据管理器（`keyring` 4.2.0），服务名 `com.engmentor.desktop`。
+  - Oxford 凭据未做（尚未接入 Oxford）。
+- [x] 验收：**UI 不能读取完整密钥** —— 没有任何命令返回密钥，`settings_read` 只回 `credentialConfigured: bool`；
+      前端解析快照时多出任何未知字段即整体拒绝。
+- [x] 验收：**日志和数据库中没有密钥** —— 尚无数据库；日志侧有单测（错误文案不含密钥载荷）
+      与 Python 子进程端到端用例（token/API Key 不出现在 stdout/stderr）双重断言。
+- [x] 验证：`pnpm check:secrets` → 0；Rust 单测 46 项 + 真实凭据管理器往返用例通过。
+  - 「E2E」一项由 `apps/desktop/src-tauri/tests/sidecar_integration.rs` 的 6 项 Rust↔Python 集成测试承担
+    （需显式运行 `-- --ignored`，原因见 PROJECT_STATUS 的 G-6）。
+- 依赖：T011（已完成）。
+
+#### T002（部分完成）：DeepSeek Gateway 的最小可用版本
+
+> 说明：用户 2026-09-19 直令「先跑通一次真实回答」，因此本任务先做了一个**最小版本**，
+> 完整 Spike（结构化输出、预算、失败重试矩阵）仍未做。
+
+- [x] 使用配置里的 model id 完成**流式请求**：`POST {base_url}/chat/completions`（`stream: true`），
+      只用标准库 `urllib`，逐帧 SSE 解析。
+- [x] 流式回答经 Tauri `Channel` 推到界面并逐字渲染。
+- [ ] 结构化输出（JSON Output + Pydantic 校验）。
+- [ ] 超时、限流、截断、取消与预算上限的完整处理（目前只有 60s 超时与可读的失败信封）。
+- [ ] `ENGM.LLM.*` 错误码域（当前借用 `INVALID_INPUT` / `INTERNAL_UNEXPECTED`，缺口 G-1）。
+- 验收：结构化输出通过 Pydantic；失败不会无限重试 —— **未做**。
+- 验证：mock 测试 + 一次脱敏的真实 API smoke test —— **待用户用真实密钥验收**。
+- 依赖：T011（已完成）。
 
 ### 0.2 风险验证（Spike）
 

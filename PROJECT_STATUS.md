@@ -37,13 +37,13 @@
 | 字段 | 当前值 |
 |---|---|
 | Agent/负责人 | ZCode（用户 Holmes 授权） |
-| 当前任务 | **开发侧重点已转为「产品可用优先」**（见下方 2026-09-19 指令）：目标是让用户能在自己的电脑上真正用起来。下一步是 `T012`（设置与密钥存储，含本机凭据配置）→ 桌面壳可跑通的最小闭环（M01 + M03）。**CI / 发布工程 / 质量门禁投入暂停** |
-| 当前模块 | `M00-foundation-contracts`（T010、T011 完成；T012 未开始） |
+| 当前任务 | **「本机可用」最薄垂直切片已完成**（2026-09-19 用户指令）：凭据存储 → Sidecar 起得来 → Rust 代理 → 一次真实流式回答。四个步骤都已落地并在本机验证。**下一步：用户用自己的 DeepSeek 密钥做一次真人验收**（验证清单见最新交接记录） |
+| 当前模块 | `M00-foundation-contracts`（T010–T012 完成）+ `M01-desktop-shell` / `M03-llm-gateway` 的**最小版本**（无独立 Spec，按用户直令实现，缺口已登记） |
 | 分支 | `feat/M00-foundation-contracts`（基于 `origin/main` @ `ddd16be`） |
-| 状态 | `IN_PROGRESS`；M00 的 T010/T011 已完成并验证（本机 15 项命令 exit 0，CI 在 GitHub 上 5/5 通过）。**产品能力仍为零**：桌面壳只有一张说明页，没有查词/语法/评分/导入 |
+| 状态 | `IN_PROGRESS`；**产品能力不再为零**：桌面壳可启动、可在本机配置凭据、可与 DeepSeek 完成一次真实流式对话。仍**没有**知识库、检索、引用、查词、语法、评分、导入 |
 | 开始时间 | 2026-09-19 |
-| 计划修改文件 | `package.json`、`pnpm-workspace.yaml`、`.npmrc`、`.gitattributes`、`.env.example`、`.gitleaks.toml`、`eslint.config.mjs`、`.github/workflows/ci.yml`、`apps/desktop/**`、`packages/contracts/**`、`services/ai-core/**`、`scripts/{contracts-check,check-ignored,check-secrets,audit-capabilities}.mjs`、`README.md`、`PROJECT_STATUS.md`、`tasks/todo.md` |
-| 下一检查点 | 与用户确认"本机可用"的最小范围 → `T012`（凭据配置）与 M01/M03 的最小闭环。draft PR #1 保留不动（它是 CI 的触发器，不合并） |
+| 计划修改文件 | `apps/desktop/**`（含 `src-tauri/src/{secrets,settings,sidecar,http,state,commands,contracts,lib,main}.rs`）、`services/ai-core/src/english_teacher/sidecar/**`、`services/ai-core/tests/test_sidecar*.py`、`apps/desktop/src-tauri/tests/sidecar_integration.rs`、`packages/contracts/scripts/generate.mjs`、`.gitleaks.toml`、`README.md`、`PROJECT_STATUS.md`、`tasks/todo.md` |
+| 下一检查点 | 用户本机验收（配 Key → 勾同意 → 检查 Sidecar → 提一个问题）→ 之后按 `docs/specs/SPEC-SLICE-01-local-usable-sentence-scoring.md`（另一会话所拟）或用户指定方向继续 |
 
 **执行顺序（2026-09-19 用户裁定，替代此前冲突描述）**：工具链预检与安装（T010 的第一步）→ `M00（T010–T012）` → `T001–T005` 风险 Spike → `Checkpoint A` → Phase 1 及之后的业务模块。M00 不再排在 Spike 之后。
 
@@ -65,10 +65,10 @@
 
 | 模块 ID | 模块 | 优先级 | 状态 | 最后验证 | 证据/PR | 下一步 |
 |---|---|:---:|---|---|---|---|
-| `M00-foundation-contracts` | Monorepo、契约、CI、ADR 与规则 | P0 | IN_PROGRESS | 2026-09-19 T011 完成，且 **CI 已在 GitHub 上 5/5 通过**（[run #2](https://github.com/Holmes522/LanguageTeacherAgent-English/actions/runs/35431617828)） | [`SPEC-M00`](docs/specs/SPEC-M00-foundation-contracts.md) v1.5、`packages/contracts/**`、`apps/desktop/src-tauri/src/contracts.rs`、`.github/workflows/ci.yml`、[`ADR-008`](docs/decisions/ADR-008-ci-secret-scan-self-managed-gitleaks.md) | T012（设置与密钥）（**先于** T001–T005 Spike） |
-| `M01-desktop-shell` | Tauri 桌面壳、Sidecar、安装更新 | P0 | NOT_STARTED | — | — | Sidecar Spike |
-| `M02-local-storage-settings` | SQLite、迁移、设置、密钥 | P0 | NOT_STARTED | — | — | 等待 M00/M01 |
-| `M03-llm-gateway` | DeepSeek、流式、结构化输出、预算 | P0 | NOT_STARTED | — | — | DeepSeek Spike |
+| `M00-foundation-contracts` | Monorepo、契约、CI、ADR 与规则 | P0 | IN_PROGRESS | 2026-09-19 T012 完成；`pnpm lint/typecheck/test/build/contracts:check/check:secrets/check:capabilities` 全部 exit 0 | [`SPEC-M00`](docs/specs/SPEC-M00-foundation-contracts.md) v1.5、`packages/contracts/**`、`apps/desktop/src-tauri/src/contracts.rs`、`.github/workflows/ci.yml`、[`ADR-008`](docs/decisions/ADR-008-ci-secret-scan-self-managed-gitleaks.md) | 待用户本机验收；`check:secrets` 新增一条**提交范围**例外，见最新交接记录 |
+| `M01-desktop-shell` | Tauri 桌面壳、Sidecar、安装更新 | P0 | IN_PROGRESS（最小版本） | 2026-09-19：IPC 命令、Sidecar 生命周期与 6 项 Rust↔Python 集成测试通过 | `apps/desktop/src-tauri/src/{sidecar,http,state,commands}.rs`、`tests/sidecar_integration.rs` | 剩余：打包（PyInstaller）、崩溃恢复、安装包（T001/T050，**已明确推迟**） |
+| `M02-local-storage-settings` | SQLite、迁移、设置、密钥 | P0 | IN_PROGRESS（最小版本） | 2026-09-19：设置与密钥存储完成（无 SQLite） | `src-tauri/src/{secrets,settings}.rs`、`src/components/SettingsView.tsx` | 剩余：SQLite 与迁移；设置目前落在 `%APPDATA%\EngMentor\settings.json` |
+| `M03-llm-gateway` | DeepSeek、流式、结构化输出、预算 | P0 | IN_PROGRESS（最小版本） | 2026-09-19：流式对话端到端已通（**用户真实密钥验收待做**） | `services/ai-core/src/english_teacher/sidecar/{chat,deepseek}.py`、`src/lib/chat.ts`、`src/components/ChatView.tsx` | 剩余：结构化输出、Token 预算、超时/限流重试、`ENGM.LLM.*` 错误码域（见缺口登记） |
 | `M04-knowledge-registry` | 知识源、授权、选择和状态 | P0 | NOT_STARTED | — | — | 等待 M02 |
 | `M05-document-ingestion` | PDF/DOC/DOCX、安全解析与索引任务 | P0 | NOT_STARTED | — | — | DOC 方案 Spike |
 | `M06-retrieval-citations` | 分层路由、混合检索、引用 | P0 | NOT_STARTED | — | — | 检索 Spike |
@@ -231,6 +231,156 @@
 ```
 
 ## 11. 交接记录
+### 2026-09-19 — 「本机可用」最薄垂直切片：凭据 → Sidecar → Rust 代理 → 一次真实流式回答（READY_FOR_REVIEW）
+
+- Agent/负责人：ZCode（用户 Holmes 直令）
+- 状态：**READY_FOR_REVIEW** —— 代码、测试、构建、文档全部完成并在本机验证；
+  **唯一未完成的证据是用户用自己的 DeepSeek 密钥做的真人验收**（见文末清单）
+- 分支：`feat/M00-foundation-contracts`
+- Commit/PR：本分支提交（**只按路径暂存本切片自己的文件**，见下方"与另一会话的并发情况"）。未 push `main`，未合并 PR #1
+
+#### 做了什么（用户指定的四步，逐步可验证）
+
+1. **凭据：设置界面录入 → OS 凭据存储**（T012 最小版本）
+   - 新增 `secrets.rs`：密钥存入 **Windows 凭据管理器**（`keyring` 4.2.0，服务名 `com.engmentor.desktop`，
+     与 `tauri.conf.json` 的 identifier 一致，且有一条测试断言两者相等）。
+   - 抽成 `SecretStore` trait：生产用 OS 凭据存储，单测用内存实现（测试不往开发者机器的凭据管理器里写东西）。
+   - **另有一条真的写真实凭据管理器的用例**（唯一 service 名 + Drop 清理），证明这条路径在本机真的能用。
+   - `settings.rs`：非敏感设置（同意开关、模型 id、服务地址）落 `%APPDATA%\EngMentor\settings.json`，
+     原子写（临时文件 + 重命名），损坏时改名保留为 `.corrupt` 而不是静默丢弃。
+   - **Q5 的 opt-in 同意保留**：默认关闭，界面写清"发什么/不发什么"，且门禁在**主进程**里判
+     （`state::consent_required`），不是只在界面上拦。
+   - **UI 无法读回密钥**：没有任何命令返回密钥，`settings_read` 只回 `credentialConfigured: bool`；
+     前端解析快照时**多出任何未知字段就整体拒绝**（防止将来主进程改动把密钥带进 DOM）。
+2. **Sidecar 起得来**（`services/ai-core/src/english_teacher/sidecar/**`）
+   - `127.0.0.1` + **端口 0（操作系统随机分配）**；token 每次启动随机 32 字节，经 **stdin 第一行**下发
+     （不走命令行参数、不走环境变量 —— 那两处对同机其他进程可见）。
+   - 只用标准库（`http.server` + `urllib`），未新增任何 Python 依赖。
+   - 所有响应都是**统一信封**（B-6）：非 200 是单份 JSON 信封，200 是 `text/event-stream` 逐帧信封。
+   - 启动时按 `version.schema.json` 上报契约版本，主进程 `negotiate_contract_version` 协商，不一致即拒绝服务。
+   - **孤儿进程防护**：主进程持有子进程 stdin 的写端，一旦主进程（含崩溃）退出，管道关闭 → Sidecar 自己退出。
+3. **Rust 代理**（`sidecar.rs`、`http.rs`、`commands.rs`）
+   - 注册了 6 个 Tauri 命令：`settings_read` / `settings_write` / `credential_set` / `credential_clear` /
+     `sidecar_status` / `chat_stream`。**`main.rs` 上那个带移除条件的 `#[allow(dead_code)]` 已删除** ——
+     它的移除条件（首个 IPC 命令落地）已满足；与之配套，Rust 侧从 bin 改为 **lib + 极薄 bin**，
+     这样 `dead_code` 仍然对"真正没接线的代码"有意义，而不是靠豁免压住。
+   - **四条边界都真的走了一遍**（SPEC-M00 §5.3）：WebView→Rust（`accept`）、Rust→Sidecar（发送前）、
+     Sidecar→Rust（每帧进来）、Rust→WebView（每帧出去）。畸形负载一律 `ENGM.CONTRACT.SCHEMA_INVALID`。
+   - 手写了一个**只够本机 Sidecar 用**的回环 HTTP/1.1 客户端（`http.rs`）：请求固定 `Connection: close`、
+     响应以连接关闭表示结束，因此不需要连接复用 / chunked / 重定向 / TLS / 代理。
+     模块文档明确写了"**它不能拿去做别的用途**"，要访问真正的远程服务应换成成熟客户端库。
+   - Sidecar **直接执行 venv 里的 `python.exe -m english_teacher.sidecar`，不经过 `uv run`** ——
+     多一层 uv 会让 `Child::kill` 只杀掉 uv 而留下真正的 Python 进程。
+   - 平台差异：`CREATE_NO_WINDOW`（不弹控制台）、`Drop` 里 kill + wait（不留僵尸）。
+4. **一次真实回答**（M03 最小版本）
+   - `deepseek.py`：`POST {base_url}/chat/completions`（`stream: true` + `include_usage`），
+     只用 `urllib`（默认用系统 CA 校验证书），SSE 解析对心跳/未知帧宽容。
+   - 流式经 Tauri 的 **`Channel`** 推给界面（不是全局 `emit` —— Channel 只有发起方收得到）。
+   - 界面：`ChatView` 逐字渲染、失败只报一次、终局一定会到（不会停在"生成中"）。
+   - 界面措辞如实：明说"没有知识库、没有引用、没有评分"，`capabilities` 保持为空。
+
+#### 安全红线核对（逐条对照用户要求）
+
+| 要求 | 状态 | 证据 |
+|---|---|---|
+| CSP / capability / ESLint 三层防护不放宽 | ✅ 未改动 | `pnpm check:capabilities` → exit 0（权限仍恰好 `core:default`）；`tauriConfig.test.ts`（CSP 白名单精确断言）与 `lintNetworkBoundary.test.ts`（55 项）全绿 |
+| 密钥不进 Git | ✅ | 工作区扫描 0 命中（见下"例外"一节说明历史命中如何处理） |
+| 密钥不进日志 | ✅ | 单测断言错误文案不含密钥载荷；Python 子进程端到端用例断言 token 与 API Key 不出现在 stdout/stderr |
+| 密钥不进 SQLite | ✅（尚无 SQLite） | 设置文件只有 3 个键，有测试断言序列化结果不含任何 `key` 字段 |
+| 密钥不进 WebView 状态 | ✅ | 无命令返回密钥；前端拒绝含未知字段的快照；`responses_never_contain_the_api_key` |
+| `main` 不直接推送 / 不用 force push | ✅ | 只在功能分支提交 |
+| 不合并 draft PR #1 | ✅ | 未动 |
+| 用户上传内容 / 第三方响应 / LLM 输出视为不可信 | ✅ | 上游响应逐帧过 schema 校验后才渲染；未预期异常只打印异常**类型名**（不打印消息，消息可能含用户正文） |
+
+#### 验证命令与结果（全部真实退出码，本机执行）
+
+- `scripts/preflight.ps1 -RequireReady -NoJson -Quiet` → **0**（14 项 ok=12 missing=0 unknown=1）
+- `pnpm install --frozen-lockfile` → **0**
+- `pnpm contracts:generate` → **0**；`pnpm contracts:check` → **0**（无漂移）
+- `pnpm lint` → **0**（eslint + ruff + cargo fmt/clippy，clippy 带 `-D warnings`）
+- `pnpm typecheck` → **0**（tsc×2 + mypy `--strict`，覆盖生成物）
+- `pnpm test` → **0**：vitest **112**（desktop）+ **34**（contracts）、pytest **93**、cargo **46**（+6 项集成用例按需运行）
+- `pnpm build` → **0**
+- `pnpm check:secrets` → **0**；`pnpm check:capabilities` → **0**
+- **Rust↔Python 真实集成测试**（会真的起 Sidecar 进程）→ **6/6 通过**：
+  `cargo test --manifest-path apps/desktop/src-tauri/Cargo.toml -- --ignored`
+
+#### 集成测试证明了什么（这些是单测证明不了的）
+
+1. 握手协议两侧真的对得上（Rust 写 camelCase、Python 按同名别名读）。
+2. **B-1 从进程外可验证**：用 `netstat` 断言监听地址是 `127.0.0.1:<port>` 而**不是** `0.0.0.0`。
+3. 错误 token → 401，且响应正文本身仍是合法信封，且不回显所出示的 token。
+4. 未配置凭据时对话请求返回的是**一帧失败信封**（而不是把连接挂死）。
+5. 上游不可达时给出的是一帧可读的失败信封（文案含"无法连接"），且不含密钥。
+6. **句柄释放后进程真的退出**：端口不再监听、连接被拒。
+
+#### 过程中发现并修掉的两个真实问题（都是先失败、再定位、再验证，不是推断）
+
+1. **服务端在回 404/401 之前没有读请求体** → 客户端还在写请求体时连接被关，收到的是
+   `ConnectionAbortedError` 而不是那个精心构造的错误信封。对客户端来说这是两种完全不同的结论
+   （"被拒绝" vs "服务端坏了"）。已加 `_discard_request_body()`（带已读标记与长度上界，
+   避免重复读取时把自己阻塞住），并补了两条**用 64 KiB 请求体**的回归测试（这个大小超过典型套接字缓冲区，
+   所以"先回响应再关连接"的写法必然失败）。另外给 handler 设了 30 秒空闲超时。
+2. **Python 侧启动配置原来按 `api_key` 读**，而 Rust 写的是 `apiKey` → Sidecar 直接起不来。
+   已改用 `alias_generator=to_camel`，并在**两侧各留一条断言**钉住字段名
+   （Python 断言别名集合，Rust 断言握手负载的键集合），任何一侧改名都会让另一侧失败。
+
+#### 契约相关的两处改动（都在既有机制内，未改 schema）
+
+1. `generate.mjs` 现在**把 `schema-manifest.json` 同时写进 Python 包**
+   （`packages/contracts/python/src/engm_contracts/schema-manifest.json`）。
+   原因：Sidecar 启动要上报自己支持的 schema `$id` 集合，如果那份清单在 Python 里另抄一遍，
+   它就成了第二份契约来源，而"某侧落后于契约包"正是这条上报要暴露的问题。
+   该文件在 `check-drift.mjs` 的生成物路径内，因此同样受漂移检查约束。
+2. **未新增 schema、未新增错误码。** 原因：SPEC-M00 §5.2 明确 M00 不定义业务命令字段，
+   而 M03 尚无已批准的 Spec，此时定形状等于在没有规范的情况下先定 M03 的错误域。
+
+#### 已知问题与缺口（都带到期条件，不隐藏）
+
+| # | 缺口 | 影响 | 到期条件 |
+|---|---|---|---|
+| G-1 | **M03 的错误域不精确**：无凭据/未同意用 `ENGM.CONTRACT.INVALID_INPUT`，上游故障用 `ENGM.INTERNAL.UNEXPECTED`（且丢掉了"限流可重试"的信息） | 界面文案清楚，但程序化分支（重试）暂时无从判断 | **M03 的 Spec 落地时必须补 `ENGM.LLM.*` 域**（`CONSENT_REQUIRED` / `CREDENTIAL_MISSING` / `PROVIDER_ERROR` / `BUDGET_EXCEEDED`） |
+| G-2 | **对话载荷形状写了两份**（`chat.py` 的 `ChatRequest` 与 `src/lib/chat.ts` 的 `ChatMessage`） | B-5 要求的"契约包是唯一来源"在这两个类型上暂时不成立 | 同上：M03 的 Spec 落地时写进 `packages/contracts/schema/v1/` 并纳入三方一致性用例 |
+| G-3 | **PyInstaller 打包 Sidecar 未做**（用户明确同意推迟） | 开发期用 venv 里的 python 直接起，**只有本机能跑**；release 构建会因为找不到 AI Core 目录而给出明确指引并拒绝启动 | 一旦要分发给他人就必须回来做 |
+| G-4 | **`base_url` 可被改写** → 若 WebView 被攻破，可诱导 Sidecar 把密钥发往自选主机 | 已用"必须 https + 不得内嵌凭据 + 界面显式展示"缓解，但运行期无法根除 | M12 安全评审；届时应考虑对 base_url 做更强的约束或让用户二次确认 |
+| G-5 | **`sidecar_status` 只覆盖"起来没有 + 契约版本"**，不验证 Key 是否真的有效 | 用户配错 Key 时，错误会在第一次提问时才出现（文案已明确指出 401 与"请检查设置里的 API Key"） | 可在 M03 Spec 里加一个"轻量校验"命令（注意：那会把密钥发给上游，需先判定是否值得） |
+| G-6 | Rust 集成测试（6 项）默认 `#[ignore]` | CI 的 `rust` job 不准备 Python 环境，因此**这 6 项不在 CI 里跑** | 若希望纳入 CI，需要给 `rust` job 加 `uv sync`（属"CI 加码"，用户当前已暂停该方向） |
+
+#### 与另一会话的并发情况（必须知晓，不隐瞒）
+
+本仓库当时有**两个会话同时操作同一个工作目录**，期间发生了事故与相应处理：
+
+- 另一会话的提交 `55ff124`（提交信息是"仅触发策略与文档改动"）用 `git add -A` 把本切片
+  **约 6,700 行在制品一起卷进了那个提交**，导致提交信息与内容不符。该会话已把这次事故写成
+  规则加进 `AGENTS.md`（禁止 `git add -A`、提交前必须 `git status`、共享文件单一写者、不得改写历史）。
+- 同一提交把当时仍是未跟踪文件里的 **3 处密钥扫描命中**带进了历史（未跟踪文件不在历史里，
+  所以此前的扫描一直是 0 命中）。那 3 处是测试哨兵值（形如 `sk-live-SECRET-<hex>`），
+  **从未是任何服务的真实凭据**。
+- 处理方式（两步都做了）：
+  1. **工作区修复**：三个常量全改成不含密钥形态的 `engm-test-sentinel-*`，并在各测试文件顶部
+     写明"不要再写回密钥形态"的原因。六个相关文件逐个单文件扫描均 0 命中。
+  2. **`.gitleaks.toml` 新增本文件的第一条例外**，范围窄到"**某一个已推送的提交 + 那三条路径**"
+     （不含任何密钥形态的字符串，符合 SPEC-M00 §8 的三项要求）。已实测其范围：
+     例外生效后全量历史 0 命中；而在**另一个提交**里向**同一条路径**写入同样形态的字符串
+     **仍会被检出**。例外条目里写了移除条件。
+  - 为什么不是改写历史：`55ff124` 已推送到 `origin`，剔除它必须 force push，而本仓库禁止 force push。
+- 另一会话另提交了 `docs/specs/SPEC-SLICE-01-local-usable-sentence-scoring.md`（句子评分垂直切片草案），
+  与本切片的"本机可用"目标相邻但不同。**下一步做哪一个应由用户决定**，本切片未与之合并。
+
+#### 下一个 Agent 应先做
+
+1. **先读本节与 §3、§4**，不要在不知道上面那次并发事故的情况下继续提交。
+2. **请用户完成真人验收**（下面是需要用户亲手做的部分，Agent 无法代替）：
+   1. `cd services/ai-core && uv sync --locked`（若尚未同步）；
+   2. 仓库根执行 `pnpm tauri dev`（在 `apps/desktop` 下执行 `pnpm tauri dev` 亦可）；
+   3. 「设置」→ 填入 DeepSeek API Key → 保存密钥 → 显示"✓ 已配置"（密钥存进凭据管理器，界面读不回）；
+   4. 「设置 → 内容上云」勾选同意；
+   5. 「对话」→ 点「检查 Sidecar」→ 应显示"Sidecar 已就绪（契约 v1，凭据已下发）"；
+   6. 输入一句话发送 → 回答应逐字出现；
+   7. （可选）用 `cmdkey /list` 或凭据管理器查看 `com.engmentor.desktop` 条目。
+3. 验收后按用户指定的方向继续（候选：`SPEC-SLICE-01` 的句子评分，或补 M03 的 Spec 与 `ENGM.LLM.*` 错误域）。
+4. **建议**：在另一会话仍在活动期间，避免同时编辑 `PROJECT_STATUS.md` / `tasks/todo.md` / lockfile 与生成物。
+
 ### 2026-09-19 — 开发侧重点调整：产品可用优先（用户指令，优先于此前路线）
 
 - Agent/负责人：ZCode（用户 Holmes 指示）

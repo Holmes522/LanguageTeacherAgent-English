@@ -133,11 +133,10 @@ impl SettingsStore {
             fs::create_dir_all(parent)
                 .map_err(|e| format!("无法创建设置目录 {}：{e}", parent.display()))?;
         }
-        let body = serde_json::to_string_pretty(settings)
-            .map_err(|e| format!("设置无法序列化：{e}"))?;
+        let body =
+            serde_json::to_string_pretty(settings).map_err(|e| format!("设置无法序列化：{e}"))?;
         let tmp = self.path.with_extension("json.tmp");
-        fs::write(&tmp, format!("{body}\n"))
-            .map_err(|e| format!("无法写入设置文件：{e}"))?;
+        fs::write(&tmp, format!("{body}\n")).map_err(|e| format!("无法写入设置文件：{e}"))?;
         // Windows 上 std::fs::rename 会替换已存在的目标（MoveFileEx + REPLACE_EXISTING），
         // 因此这里不需要先删旧文件。
         fs::rename(&tmp, &self.path).map_err(|e| format!("无法提交设置文件：{e}"))

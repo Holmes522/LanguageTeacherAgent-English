@@ -357,7 +357,8 @@ mod tests {
     }
 
     #[test]
-    fn version_negotiation_accepts_the_current_version() {        let reported = json!({
+    fn version_negotiation_accepts_the_current_version() {
+        let reported = json!({
             "contractVersion": CONTRACT_VERSION,
             "schemaIds": ["https://engmentor.local/contracts/v1/envelope.schema.json"]
         });

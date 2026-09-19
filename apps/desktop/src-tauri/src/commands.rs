@@ -170,8 +170,10 @@ fn handle_credential_set(state: &AppState, request: &Value) -> Value {
         return ContractError::invalid_input("API Key 不能为空").to_envelope(&incoming.request_id);
     }
     if key.chars().any(char::is_whitespace) {
-        return ContractError::invalid_input("API Key 不能包含空白字符（请检查是否复制时带了换行）")
-            .to_envelope(&incoming.request_id);
+        return ContractError::invalid_input(
+            "API Key 不能包含空白字符（请检查是否复制时带了换行）",
+        )
+        .to_envelope(&incoming.request_id);
     }
     if key.len() > 512 {
         return ContractError::invalid_input("API Key 长度超出预期上限")
@@ -308,7 +310,9 @@ fn handle_sidecar_status(slot: &SidecarSlot, spec: &LaunchSpec, request_id: &str
     // 请求期也复核一次契约版本：启动时协商过，但 Sidecar 可能在此期间被换掉
     // （例如用户手工替换了 venv）。不一致就拒绝服务，不带着不匹配的假设继续跑。
     if relayed.get("ok").and_then(Value::as_bool) == Some(true) {
-        let reported = relayed["data"]["contractVersion"].as_str().unwrap_or_default();
+        let reported = relayed["data"]["contractVersion"]
+            .as_str()
+            .unwrap_or_default();
         if reported != crate::contracts::CONTRACT_VERSION {
             return ContractError::version_mismatch_reported(reported).to_envelope(request_id);
         }
@@ -494,8 +498,10 @@ pub async fn sidecar_status(state: State<'_, AppState>, request: Value) -> Resul
     .await
     {
         Ok(envelope) => Ok(envelope),
-        Err(error) => Ok(ContractError::internal_error(format!("后台任务失败：{error}"))
-            .to_envelope(&request_id_for_error)),
+        Err(error) => Ok(
+            ContractError::internal_error(format!("后台任务失败：{error}"))
+                .to_envelope(&request_id_for_error),
+        ),
     }
 }
 
@@ -524,8 +530,10 @@ pub async fn chat_stream(
     .await
     {
         Ok(envelope) => Ok(envelope),
-        Err(error) => Ok(ContractError::internal_error(format!("后台任务失败：{error}"))
-            .to_envelope(&request_id_for_error)),
+        Err(error) => Ok(
+            ContractError::internal_error(format!("后台任务失败：{error}"))
+                .to_envelope(&request_id_for_error),
+        ),
     }
 }
 
@@ -537,7 +545,11 @@ mod tests {
     use crate::settings::SettingsStore;
     use std::sync::Arc;
 
-    const TEST_KEY: &str = "sk-live-SECRET-abcdef0123456789";
+    // 刻意**不写成密钥的形态**（不是 `sk-...`、也不带高熵尾巴）。
+    // 理由：`pnpm check:secrets` 用 gitleaks 扫全量历史，像真凭据的字符串会被
+    // generic-api-key 命中，让这道门禁失败。正确做法是别写出像凭据的测试数据，
+    // 而不是给扫描器开例外 —— `.gitleaks.toml` 至今零例外，要保住这一点。
+    const TEST_KEY: &str = "engm-test-sentinel-not-a-credential";
 
     fn temp_dir(tag: &str) -> std::path::PathBuf {
         let unique = std::time::SystemTime::now()
@@ -584,7 +596,8 @@ mod tests {
         let dir = temp_dir("no-key-leak");
         let state = state_in(&dir);
 
-        let stored = handle_credential_set(&state, &envelope("req-2", json!({ "apiKey": TEST_KEY })));
+        let stored =
+            handle_credential_set(&state, &envelope("req-2", json!({ "apiKey": TEST_KEY })));
         assert_eq!(stored["ok"], true);
         assert_eq!(stored["data"]["credentialConfigured"], true);
         assert_eq!(
@@ -616,7 +629,10 @@ mod tests {
         let settings_file = state.settings.path();
         if settings_file.exists() {
             let content = std::fs::read_to_string(settings_file).expect("可读");
-            assert!(!content.contains(TEST_KEY), "设置文件里出现了密钥：{content}");
+            assert!(
+                !content.contains(TEST_KEY),
+                "设置文件里出现了密钥：{content}"
+            );
         }
         std::fs::remove_dir_all(&dir).ok();
     }
@@ -628,22 +644,21 @@ mod tests {
 
         // 缺 requestId：连 id 都读不出来时，响应仍必须是合法信封，
         // 且错误码是 SCHEMA_INVALID（连信封都不合契约），不是 INVALID_INPUT。
-        let response =
-            handle_settings_read(&state, &json!({ "ok": true, "data": null, "citations": [] }));
+        let response = handle_settings_read(
+            &state,
+            &json!({ "ok": true, "data": null, "citations": [] }),
+        );
         assert_eq!(response["ok"], false);
         assert_eq!(response["error"]["code"], CODE_SCHEMA_INVALID);
         assert_eq!(
             response["requestId"], "unknown",
             "读不出 id 时应使用固定占位符，而不是回显对方给的字符串"
         );
-        validate_boundary(Boundary::RustToWebview, &response)
-            .expect("失败响应本身必须过契约校验");
+        validate_boundary(Boundary::RustToWebview, &response).expect("失败响应本身必须过契约校验");
 
         // 信封合法但载荷不合法：这时才是 INVALID_INPUT。
-        let bad_payload = handle_settings_write(
-            &state,
-            &envelope("req-invalid", json!({ "model": 12345 })),
-        );
+        let bad_payload =
+            handle_settings_write(&state, &envelope("req-invalid", json!({ "model": 12345 })));
         assert_eq!(bad_payload["ok"], false);
         assert_eq!(bad_payload["error"]["code"], CODE_INVALID_INPUT);
         assert_eq!(
@@ -658,7 +673,8 @@ mod tests {
         let dir = temp_dir("blank-key");
         let state = state_in(&dir);
         for bad in ["", "   ", "sk-abc\ndef"] {
-            let response = handle_credential_set(&state, &envelope("req-5", json!({ "apiKey": bad })));
+            let response =
+                handle_credential_set(&state, &envelope("req-5", json!({ "apiKey": bad })));
             assert_eq!(response["ok"], false, "空/含空白的密钥应被拒绝：{bad:?}");
         }
         assert_eq!(
@@ -696,7 +712,8 @@ mod tests {
         assert_eq!(response["ok"], true);
         assert_eq!(response["data"]["cloudConsentGranted"], true);
         assert_eq!(
-            response["data"]["model"], crate::settings::DEFAULT_MODEL,
+            response["data"]["model"],
+            crate::settings::DEFAULT_MODEL,
             "未提供的字段应保持原值"
         );
 
@@ -711,10 +728,8 @@ mod tests {
         let dir = temp_dir("reject");
         let state = state_in(&dir);
 
-        let unknown = handle_settings_write(
-            &state,
-            &envelope("req-a", json!({ "apiKey": TEST_KEY })),
-        );
+        let unknown =
+            handle_settings_write(&state, &envelope("req-a", json!({ "apiKey": TEST_KEY })));
         assert_eq!(unknown["ok"], false, "设置命令不得接受密钥字段");
 
         let bad_url = handle_settings_write(

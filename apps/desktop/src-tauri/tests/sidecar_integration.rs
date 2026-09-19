@@ -28,7 +28,11 @@ use engmentor_desktop::sidecar::{launch, LaunchSpec, CHAT_STREAM_PATH, HEALTH_PA
 use serde_json::{json, Value};
 
 /// 只做形态占位，不是真实密钥：这些用例不联网（对话请求会因为"未配置凭据"被拒）。
-const FAKE_KEY: &str = "sk-not-a-real-key-000000000000";
+// 刻意**不写成密钥的形态**（不是 `sk-...`、也不带高熵尾巴）。
+// 理由：`pnpm check:secrets` 用 gitleaks 扫全量历史，像真凭据的字符串会被
+// generic-api-key 命中，让这道门禁失败。正确做法是别写出像凭据的测试数据，
+// 而不是给扫描器开例外 —— `.gitleaks.toml` 至今零例外，要保住这一点。
+const FAKE_KEY: &str = "engm-test-sentinel-not-a-credential";
 
 fn spec_without_credential() -> LaunchSpec {
     LaunchSpec::from_parts(
@@ -76,7 +80,11 @@ fn sidecar_launches_handshakes_and_answers_health() {
     let handle = launch(&spec_without_credential())
         .expect("Sidecar 应能启动（若失败，先运行 uv sync --locked --project services/ai-core）");
 
-    assert!(handle.port() > 1023, "端口应由操作系统分配：{}", handle.port());
+    assert!(
+        handle.port() > 1023,
+        "端口应由操作系统分配：{}",
+        handle.port()
+    );
     assert_eq!(handle.contract_version(), CONTRACT_VERSION);
     assert!(handle.is_alive(), "握手成功后进程应当还活着");
 
@@ -142,7 +150,11 @@ fn sidecar_streams_a_failure_envelope_when_no_credential_was_provided() {
 
     let mut response = handle
         .client()
-        .send(Method::Post, CHAT_STREAM_PATH, Some(&user_turn("req-e2e-1")))
+        .send(
+            Method::Post,
+            CHAT_STREAM_PATH,
+            Some(&user_turn("req-e2e-1")),
+        )
         .expect("对话请求应能发出");
     assert_eq!(response.status, 200, "流式端点以 200 + SSE 回应");
 
@@ -180,7 +192,11 @@ fn sidecar_reports_an_unreachable_provider_as_a_failure_envelope() {
 
     let mut response = handle
         .client()
-        .send(Method::Post, CHAT_STREAM_PATH, Some(&user_turn("req-e2e-2")))
+        .send(
+            Method::Post,
+            CHAT_STREAM_PATH,
+            Some(&user_turn("req-e2e-2")),
+        )
         .expect("对话请求应能发出");
 
     let mut frames = Vec::new();
@@ -194,7 +210,10 @@ fn sidecar_reports_an_unreachable_provider_as_a_failure_envelope() {
     validate_boundary(Boundary::SidecarToRust, &frames[0]).expect("失败帧必须合契约");
     assert_eq!(frames[0]["ok"], false);
     let message = frames[0]["error"]["message"].as_str().unwrap_or_default();
-    assert!(message.contains("无法连接") || message.contains("超时"), "实际文案：{message}");
+    assert!(
+        message.contains("无法连接") || message.contains("超时"),
+        "实际文案：{message}"
+    );
     // §9.2：失败信息里不能带出密钥。
     assert!(!message.contains(FAKE_KEY));
 }
@@ -215,7 +234,10 @@ fn dropping_the_handle_stops_the_sidecar() {
         std::thread::sleep(Duration::from_millis(100));
         still_listening = listening_address(port).is_some();
     }
-    assert!(!still_listening, "句柄释放后 Sidecar 不应继续监听端口 {port}");
+    assert!(
+        !still_listening,
+        "句柄释放后 Sidecar 不应继续监听端口 {port}"
+    );
 
     // 连接也必须失败（没有进程在 accept）。
     assert!(
