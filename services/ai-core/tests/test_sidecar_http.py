@@ -315,7 +315,9 @@ def test_a_rejected_request_leaves_the_server_serving(client: Client) -> None:
 
 def test_non_json_bodies_are_rejected_without_echoing_them(client: Client) -> None:
     connection = http.client.HTTPConnection(BIND_HOST, client._connection.port, timeout=10)  # noqa: SLF001
-    secret_body = b'{"prompt": "sk-live-SHOULD-NOT-APPEAR"'
+    # 故意写成一个不合法的 JSON 片段，并带一个显眼的哨兵串：断言错误响应不回显请求体内容。
+    # 哨兵串刻意不用 `sk-` 前缀（理由见本文件顶部关于"不要写出像凭据的测试数据"的说明）。
+    secret_body = b'{"prompt": "engm-test-sentinel-SHOULD-NOT-APPEAR"'
     connection.request(
         "POST",
         CHAT_STREAM_PATH,
