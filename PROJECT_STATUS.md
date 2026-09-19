@@ -37,13 +37,13 @@
 | 字段 | 当前值 |
 |---|---|
 | Agent/负责人 | ZCode（用户 Holmes 授权） |
-| 当前任务 | T010 第一小步修订（T010-preflight-fix）：预检脚本已重构加固并全面复验，**等待用户确认安装方案；未安装任何软件** |
+| 当前任务 | README 文档基线（Living README + AGENTS 维护规则 + M00 验收项），**等待进入工具链安装与版本固化** |
 | 当前模块 | `M00-foundation-contracts`（T010 进行中，未完成） |
 | 分支 | `feat/M00-foundation-contracts`（基于 `origin/main` @ `ddd16be`） |
-| 状态 | `IN_PROGRESS`（Spec v1.1 已复核通过；预检 v2.0.0 完成；安装未开始） |
+| 状态 | `IN_PROGRESS`（Spec v1.2；README 基线已建立；安装未开始） |
 | 开始时间 | 2026-09-19 |
-| 计划修改文件 | `scripts/preflight.ps1`、`scripts/lib/PreflightChecks.psm1`、`scripts/tests/preflight.Tests.ps1`、`.gitignore`、`PROJECT_STATUS.md`、`tasks/todo.md` |
-| 下一检查点 | 用户确认安装方案 → 安装并固化 pnpm / uv / Python 3.12 / Rust(MSVC) / MSVC Build Tools → 继续 T010（Monorepo、锁文件、CI） |
+| 计划修改文件 | `README.md`、`AGENTS.md`、`docs/specs/SPEC-M00-foundation-contracts.md`、`PROJECT_STATUS.md`、`tasks/todo.md` |
+| 下一检查点 | 工具链安装与版本固化（已授权）→ 重跑预检至 Blocking 全绿 → 继续 T010（Monorepo、锁文件、CI） |
 
 **执行顺序（2026-09-19 用户裁定，替代此前冲突描述）**：工具链预检与安装（T010 的第一步）→ `M00（T010–T012）` → `T001–T005` 风险 Spike → `Checkpoint A` → Phase 1 及之后的业务模块。M00 不再排在 Spike 之后。
 
@@ -118,7 +118,8 @@
 - 源码：尚未创建。
 - 测试：尚未创建。
 - CI：尚未创建。
-- 已就绪的 Spec：[`docs/specs/SPEC-M00-foundation-contracts.md`](docs/specs/SPEC-M00-foundation-contracts.md)（**v1.1**，已按用户 2026-09-19 审阅结论修订，待复核）。
+- 已就绪的 Spec：[`docs/specs/SPEC-M00-foundation-contracts.md`](docs/specs/SPEC-M00-foundation-contracts.md)（**v1.2**，v1.1 已复核通过，v1.2 增补 README 文档基线验收项 AC-15～AC-18）。
+- 文档基线：[`README.md`](README.md) 已建立（Living README，Pre-alpha 状态如实声明，用户使用指南按 10 个固定小节预留为"待实现"占位，不含未实现命令、虚构截图或下载地址）。维护规则见 [`AGENTS.md`](AGENTS.md)「README 维护规则」：README 与实际产品不一致时模块不得标记 `DONE`。
 - 本机工具链基线（2026-09-19 只读核对）：Git 2.51.0.windows.1（`core.autocrlf` 生效，工作区 CRLF/仓库 LF，待 `.gitattributes` 统一）；Node v22.20.0 ✅；npm 10.9.3（仅引导）；**pnpm 未安装**；系统 Python 3.13.7（项目固定 3.12，由 uv 管理，**不使用系统解释器**）；**uv 未安装**；**Rust/Cargo 未安装**；**MSVC C++ Build Tools 未核对**；**WebView2 Runtime 未核对**；**VBSCRIPT 按需功能未核对**。
 - 工具链预检（v2.0.0，2026-09-19 重构加固）：入口 `scripts/preflight.ps1`（短入口，仅 CLI 与退出码）+ 检查模块 `scripts/lib/PreflightChecks.psm1`（全部检查逻辑与可注入探针）+ 测试 `scripts/tests/preflight.Tests.ps1`（Pester，唯一的自动化测试来源；脚本内原有的 `-SelfTest` 假场景框架已删除以免重复）。清单见 Spec §3.2。
 - 预检执行结果（2026-09-19，报告模式，退出码 0；共 **14** 项：ok=6 missing=6 unknown=2）：
@@ -183,6 +184,32 @@
 ```
 
 ## 11. 交接记录
+
+### 2026-09-19 — README 文档基线（DONE）
+
+- Agent/负责人：ZCode（用户 Holmes 授权）
+- 状态：DONE（**T010 仍未完成**；本小步只改文档，未安装软件、未生成脚手架）
+- 分支：`feat/M00-foundation-contracts`
+- Commit/PR：本分支提交；未创建 PR（用户未授权），未 push `main`，未 force push
+- 完成内容：
+  - 新建根目录 `README.md`（中文为主，面向未来产品使用者）：如实声明 Pre-alpha、产品不能安装或使用；含 EngMentor 定位、当前状态表、P0/P1 计划功能与"明确暂不做"、10 个固定小节的用户使用指南占位、版权与隐私红线（含 Oxford 约束与 opt-in 上云）、开发者快速开始（仅列已确认技术栈与已实测命令）、项目结构、核心文档索引、贡献与开发纪律。
+  - 已确认此文件中**不存在**：真实 API 密钥、Oxford 受限原文、虚构下载地址、未实现命令（`pnpm dev` 等一律未写）、截图。所有"待实现"小节明确标注且不含可执行步骤。
+  - `AGENTS.md` 新增「README 维护规则」：影响安装/配置/数据/隐私/知识库/查词/语法/评分/导入/界面的改动必须在同一模块提交中同步更新 README；**README 与实际产品不一致时模块不得标记 `DONE`**；并把"更新 README"加入完成与交接的强制清单。
+  - `SPEC-M00` 升到 v1.2：新增 AC-15（README 内部链接无断链）、AC-16（README 状态与 `PROJECT_STATUS.md` 一致）、AC-17（不含虚构内容）、AC-18（用户使用指南 10 小节结构 + 产品可用时的最终验收门禁）；目录结构与 T010 实施项同步加入 `README.md`。
+- 未完成内容：工具链安装与版本固化（下一步）；Monorepo 骨架、锁文件、CI 均未创建。
+- 关键文件：`README.md`（新建）、`AGENTS.md`、`docs/specs/SPEC-M00-foundation-contracts.md`、`PROJECT_STATUS.md`、`tasks/todo.md`
+- 接口/Schema 变化：无
+- 数据迁移：无
+- ADR/决策：无新增。README 维护规则属流程约束，写入 `AGENTS.md` 而非 ADR。
+- 验证命令与结果：
+  - README 内容审查 → 无密钥、无 Oxford 受限原文、无虚构下载地址、无未实现命令、无截图
+  - 相对链接检查（遍历仓库全部 Markdown，含新增 README）→ 0 条断链
+  - `git diff --check` → 退出码 0
+  - `git status --short` → 仅本次文档改动，无临时产物入库
+- Eval/性能/Token 结果：不适用
+- 已知问题与风险：README 的"开发者快速开始"有意只列已实测的预检与 Pester 命令；其余命令在 T010 完成并验证前保持"待补充"占位，避免出现未经验证的命令。
+- 环境或密钥要求：无需任何密钥
+- 下一个 Agent 应先做：执行已授权的工具链安装与版本固化，重跑预检至 Blocking 全绿，再继续 T010 骨架与 CI；此后每次用户可见改动都必须按 `AGENTS.md` 规则同步 README。
 
 ### 2026-09-19 — T010-preflight-fix：预检重构与加固（IN_PROGRESS，等待安装方案确认）
 

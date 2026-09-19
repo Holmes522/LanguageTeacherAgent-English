@@ -3,8 +3,8 @@
 | 字段 | 值 |
 |---|---|
 | 模块 ID | `M00-foundation-contracts` |
-| Spec 版本 | v1.1（按用户 2026-09-19 审阅结论修订） |
-| 状态 | 已修订，**待复核**；复核通过后才进入工具链预检与安装 |
+| Spec 版本 | v1.2（在 v1.1 基础上新增 README 文档基线验收项） |
+| 状态 | v1.1 已复核通过；v1.2 为文档基线增补，含 AC-15～AC-18 |
 | 日期 | 2026-09-19 |
 | 负责人 | ZCode（用户 Holmes 审阅） |
 | 依赖模块 | 无（M00 是所有模块的前置） |
@@ -23,6 +23,7 @@ M00 只做一件事：**让后续每个模块都能在可复现、可验证、�
 4. 提供本机与 CI 完全一致的目标命令（lint / typecheck / test / build / contracts:check）。
 5. 建立 GitHub Actions 最小门禁（Windows 优先），不依赖任何真实密钥。
 6. 固定密钥、`.env`、本地数据目录与模型权重的安全边界。
+7. 建立面向使用者的 `README.md` 文档基线（Living README）：状态必须真实，用户使用指南按固定小节预留，禁止虚构命令、截图或下载地址。
 
 ## 2. 非目标（M00 明确不做）
 
@@ -85,6 +86,7 @@ Tauri 的 MSI（WiX）打包路径依赖系统 VBScript 组件。Windows 11 24H2
 
 ```text
 LanguageTeacherAgent-English/
+├─ README.md                      # 面向使用者的产品说明与用户指南（Living README）
 ├─ PROJECT_STATUS.md              # 所有 Agent 第一读物与交接账本
 ├─ AGENTS.md / CLAUDE.md          # Agent 规则入口
 ├─ package.json                   # 根：private，仅编排脚本，不发布
@@ -363,8 +365,12 @@ ENGM_EMBEDDING_MODEL=BAAI/bge-small-en-v1.5
 | AC-10 | 密钥与本地数据不被跟踪 | `pnpm check:secrets`；`git check-ignore -v .env`、`*.key`、`models/`、`*.db`、`target/` | 扫描 0 命中；路径全部被忽略且规则来源可打印 |
 | AC-11 | MSI 打包前置（VBSCRIPT）已记录 | §3.2 的 VBSCRIPT 检查；若产出 MSI 则附实测安装结果 | 状态已记录；`NotPresent` 时给出 ADR 决策路径 |
 | AC-12 | 预检清单全项通过且有证据 | `scripts/preflight.ps1` | 逐项 `PASS`；`FAIL`/`SKIP` 项已记入 `PROJECT_STATUS.md` 并说明处理方式 |
-| AC-13 | 文档与状态同步 | 检查 `PROJECT_STATUS.md`、`tasks/todo.md`、本 Spec | 与实际结果一致，含验证命令与输出摘要 |
+| AC-13 | 文档与状态同步 | 检查 `PROJECT_STATUS.md`、`tasks/todo.md`、`README.md`、本 Spec | 与实际结果一致，含验证命令与输出摘要 |
 | AC-14 | 仓库无二进制与大文件 | `git ls-files -s` 过滤 + 体积检查 | 无模型权重、无构建产物、无 >1 MB 的误入库文件 |
+| AC-15 | README 内部链接无断链 | 遍历 README 的相对链接并逐个解析 | 0 条断链 |
+| AC-16 | README 状态与 `PROJECT_STATUS.md` 一致 | 对照 README「当前状态」表与 `PROJECT_STATUS.md` §3/§4/§8 | 阶段判断一致；README 不得比状态文件更乐观 |
+| AC-17 | README 不含虚构内容 | 检查 README：是否有未实现命令、虚构截图或下载地址、真实密钥、未授权词典原文 | 均为 0；所有"待实现"小节明确标注且不含可执行步骤 |
+| AC-18 | README 用户使用指南结构完整（发布门禁） | 检查 README 的 10 个固定小节是否齐全 | 10 个小节齐全。**最终验收标准**：产品可用时，普通用户仅凭该指南即可独立完成安装、首次配置、知识库选择、查词、评分、文档导入、数据删除与问题排查；该验证在 MVP 完成时执行，M00 阶段只验收结构与不虚构性 |
 
 ## 11. 已确认决策（D-1～D-6）
 
@@ -384,7 +390,7 @@ ENGM_EMBEDDING_MODEL=BAAI/bge-small-en-v1.5
 **门控：本 Spec 复核通过 → 工具链预检（§3.2）→ 安装与固化版本 → T010 → T011 → T012。**
 
 1. **预检**：运行 §3.2 清单，公开逐项结果；未通过项先解决再安装。
-2. **T010**：安装并固化 pnpm / uv / Rust（MSVC）；建目录与 workspace；写 `.gitattributes`、`.node-version`、`.npmrc`、`.env.example`、`.gitleaks.toml`、`scripts/preflight.ps1`；建根脚本骨架与 `ci.yml`。
+2. **T010**：安装并固化 pnpm / uv / Rust（MSVC）；建目录与 workspace；写 `README.md`（文档基线）、`.gitattributes`、`.node-version`、`.npmrc`、`.env.example`、`.gitleaks.toml`、`scripts/preflight.ps1`；建根脚本骨架与 `ci.yml`。
 3. **T011**：落地 `packages/contracts`（schema、error-codes、生成脚本、`schema-manifest.json`、TS 生成物、`engm-contracts` Python 包、三方 fixtures 与一致性测试、Rust 运行时校验 + 嵌入 manifest 测试）。
 4. **T012**：落地设置与密钥存储骨架（M00 范围内只建接口与安全断言，业务配置留给 M02）。
 
@@ -408,5 +414,6 @@ ENGM_EMBEDDING_MODEL=BAAI/bge-small-en-v1.5
 
 | 日期 | 版本 | 变更 | 作者 |
 |---|---|---|---|
+| 2026-09-19 | v1.2 | 新增 README 文档基线：`README.md` 纳入 M00 交付物与验收（AC-15 内部链接无断链、AC-16 状态与 `PROJECT_STATUS.md` 一致、AC-17 无虚构内容、AC-18 用户使用指南结构与发布门禁）；目录结构与实施顺序同步补充 README | ZCode |
 | 2026-09-19 | v1.1 | 按用户审阅结论修订：uv 命令 `--frozen` → `--locked`/`uv lock --check`；新增 §5.3 Rust 运行时 Schema 校验；Python 生成物改为可安装包 `engm-contracts`（禁止 PYTHONPATH）；新增 §5.4 WebView 无外网三层防护；§3.2 预检加入 MSVC/WebView2 与 §3.3 VBSCRIPT；落定 D-1～D-6；补 AC-7～AC-12；清理行尾空格 | ZCode |
 | 2026-09-19 | v1.0-draft | 初稿 | ZCode |
