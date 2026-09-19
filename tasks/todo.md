@@ -1,12 +1,103 @@
 # 英语老师 AI Agent 桌面客户端任务清单
 
-> 当前状态：T000 已完成（含 2026-09-19 GitHub 安全同步，`main` @ `ddd16be`）；M00 Spec 草案已写入 [`docs/specs/SPEC-M00-foundation-contracts.md`](../docs/specs/SPEC-M00-foundation-contracts.md)，**待用户审阅**；T001–T005 待执行。先完整阅读 [`PROJECT_STATUS.md`](../PROJECT_STATUS.md)，再完成并评审 T001–T005；未通过架构检查点前不要开始大规模实现。每完成一个模块或垂直切片，必须同步更新 `PROJECT_STATUS.md`。
+> 当前状态：T000 已完成（含 2026-09-19 GitHub 安全同步，`main` @ `ddd16be`）；M00 Spec 已按用户审阅结论修订为 v1.1，见 [`docs/specs/SPEC-M00-foundation-contracts.md`](../docs/specs/SPEC-M00-foundation-contracts.md)，**待复核**。先完整阅读 [`PROJECT_STATUS.md`](../PROJECT_STATUS.md)。每完成一个模块或垂直切片，必须同步更新 `PROJECT_STATUS.md`。
 >
-> 门控：M00 Spec 获批前，不安装依赖、不生成 Tauri 脚手架、不开始 T010。
+> **执行顺序（2026-09-19 用户裁定）**：工具链预检与安装 → `M00（T010–T012）` → `T001–T005` 风险 Spike → `Checkpoint A` → Phase 2 及之后的业务模块。
+> 说明：M00 是 Spike 的载体（Spike 证据需要 Monorepo、CI、契约信封与锁文件才能复现），因此 **M00 先于 Spike**；本清单把原 Phase 0（Spike）与原 Phase 1（工程地基）合并为 **Phase 0**，Phase 2 起的编号与统一方案一致。`Checkpoint A` 只门控 Phase 2 及之后的业务模块，不再门控 T010–T012。
+>
+> 门控：Spec v1.1 复核通过前，不安装依赖、不生成 Tauri 脚手架、不开始编码。
 
-## Phase 0：风险验证
+## Phase 0：工程地基与风险验证
 
-### T000：确认产品边界与授权 ✅ DONE（2026-09-19，决策部分）
+### 0.1 工程地基（M00）
+
+#### T010：创建 Monorepo 与 CI
+
+- [ ] 运行工具链预检（Spec §3.2）：Node、pnpm、uv、Python 3.12、Rust（MSVC）、MSVC C++ Build Tools、WebView2、VBSCRIPT；逐项公开结果。
+- [ ] 安装并固化版本：pnpm、uv、Rust（`rust-toolchain.toml` 提交精确版本号，不得只写 `stable`）；记录 MSVC 与 WebView2 实际版本。
+- [ ] 建立 Tauri/React、Python AI Core、contracts 和测试目录。
+- [ ] 落地 `.gitattributes`（统一 LF）、`.node-version`、`.npmrc`、`.env.example`、`.gitleaks.toml`、`scripts/preflight.ps1`。
+- [ ] 配置 pnpm、uv、Rust 锁文件与 GitHub Actions 最小 CI（5 个 job，Windows runner）。
+- 验收：Spec AC-1、AC-2、AC-6、AC-10、AC-12 通过；空骨架在 Windows CI 完整构建。
+- 验证：`pnpm install --frozen-lockfile`、`uv sync --locked --project services/ai-core`、`uv lock --check --project services/ai-core`、`cargo build --locked`；`pnpm lint`、`pnpm typecheck`、`pnpm test`、`pnpm build` 全绿。
+- 依赖：M00 Spec v1.1 复核通过 + 工具链预检通过。
+
+#### T011：实现版本化本地契约
+
+- [ ] 定义统一响应、错误、Citation、Job 和进度事件 schema（JSON Schema 2020-12）。
+- [ ] 自动生成 TypeScript 与 Python 类型（json-schema-to-typescript + datamodel-code-generator）并检测漂移。
+- [ ] Python 生成物落在可安装包 `engm-contracts`（`packages/contracts/python/`），由 uv path 依赖消费，禁止 `PYTHONPATH` 技巧。
+- [ ] 落地 Rust 运行时 Schema 校验：覆盖 WebView↔Rust 与 Rust↔Python 四条边的双向校验，失败返回 `ENGM.CONTRACT.SCHEMA_INVALID`；`schema-manifest.json` 嵌入一致性测试。
+- [ ] TS / Python / Rust 三方使用同一组正反例 fixtures，结论必须一致。
+- 验收：Spec AC-3、AC-4、AC-5、AC-7、AC-8 通过。
+- 验证：`pnpm contracts:check`、`pnpm test:contracts`、`cargo test --locked`。
+- 依赖：T010。
+
+#### T012：实现设置和密钥存储
+
+- [ ] 模型、数据目录、隐私模式和知识库设置。
+- [ ] DeepSeek/Oxford 凭据存入安全存储。
+- 验收：UI 不能读取完整密钥；日志和数据库中没有密钥。
+- 验证：E2E + `pnpm check:secrets`。
+- 依赖：T011。
+
+### 0.2 风险验证（Spike）
+
+#### T001：验证 Tauri Python Sidecar
+
+- [ ] Tauri 启动、健康检查、停止 PyInstaller Sidecar。
+- [ ] 验证 Windows 安装包和崩溃恢复；若产出 MSI，先执行 VBSCRIPT 检查（Spec §3.3）并记录结论。
+- [ ] 输出 ADR-001、ADR-002。
+- 验收：干净 Windows VM 能完成安装、启动、退出，不留僵尸进程。
+- 验证：自动化 smoke test + 手工安装录像。
+- 依赖：T010–T012（需要 Monorepo、CI 与契约作为证据载体）。
+
+#### T002：验证 DeepSeek Gateway
+
+- [ ] 使用 `deepseek-flash` 完成流式请求和 JSON Output。
+- [ ] 验证空输出、超时、限流、截断、取消和预算上限。
+- 验收：结构化输出通过 Pydantic；失败不会无限重试。
+- 验证：mock 测试 + 一次脱敏的真实 API smoke test。
+- 依赖：T011。
+
+#### T003：验证文件导入
+
+- [ ] PDF、DOCX、DOC 各准备正常、损坏和恶意样本。
+- [ ] 比较并确定旧 DOC 解析方案。
+- [ ] 输出 ADR-005。
+- 验收：三种格式均有明确的成功路径与可理解的失败信息。
+- 验证：fixture 集成测试和资源限制测试。
+- 依赖：T010。
+
+#### T004：验证本地检索
+
+- [ ] 本地 Embedding、FTS5、Qdrant Local/Edge 持久化。
+- [ ] 建立 30–50 个问题的最小检索集。
+- [ ] 输出 ADR-003。
+- 验收：重启后索引可用，引用能定位页码/段落。
+- 验证：Recall@K、MRR 和删除测试。
+- 依赖：T010。
+
+#### T005：定义评分量表
+
+- [ ] 确认句子/作文维度、权重、CEFR 映射和免责声明。
+- [ ] 建立最小人工标注集。
+- [ ] 输出 ADR-006。
+- 验收：量表可由人类独立使用，模型输出 schema 完整。
+- 验证：双人抽样评分一致性评审。
+- 依赖：T011。
+
+## Checkpoint A：架构确认
+
+> 只门控 Phase 2 及之后的业务模块；T010–T012 不再受此门控（2026-09-19 裁定）。
+
+- [ ] T001–T005 完成。
+- [ ] ADR-001 至 ADR-007 通过评审。
+- [ ] 负责人明确批准进入实现阶段。
+
+## 已完成任务记录
+
+### T000：确认产品边界与授权 ✅ DONE（2026-09-19）
 
 - [x] 核对项目真实状态并形成接手报告。
 - [x] 为 Q1–Q8 给出推荐、影响和阻塞分析。
@@ -18,83 +109,9 @@
 - 验证：用户 2026-09-19 确认 Q1–Q8；决策记录见 [`T000 产品边界与技术决策`](../docs/decisions/T000-产品边界与技术决策建议.md)。
 - 依赖：无。
 
-### T001：验证 Tauri Python Sidecar
-
-- [ ] Tauri 启动、健康检查、停止 PyInstaller Sidecar。
-- [ ] 验证 Windows 安装包和崩溃恢复。
-- [ ] 输出 ADR-001、ADR-002。
-- 验收：干净 Windows VM 能完成安装、启动、退出，不留僵尸进程。
-- 验证：自动化 smoke test + 手工安装录像。
-- 依赖：T000。
-
-### T002：验证 DeepSeek Gateway
-
-- [ ] 使用 `deepseek-flash` 完成流式请求和 JSON Output。
-- [ ] 验证空输出、超时、限流、截断、取消和预算上限。
-- 验收：结构化输出通过 Pydantic；失败不会无限重试。
-- 验证：mock 测试 + 一次脱敏的真实 API smoke test。
-- 依赖：T000。
-
-### T003：验证文件导入
-
-- [ ] PDF、DOCX、DOC 各准备正常、损坏和恶意样本。
-- [ ] 比较并确定旧 DOC 解析方案。
-- [ ] 输出 ADR-005。
-- 验收：三种格式均有明确的成功路径与可理解的失败信息。
-- 验证：fixture 集成测试和资源限制测试。
-- 依赖：T000。
-
-### T004：验证本地检索
-
-- [ ] 本地 Embedding、FTS5、Qdrant Local/Edge 持久化。
-- [ ] 建立 30–50 个问题的最小检索集。
-- [ ] 输出 ADR-003。
-- 验收：重启后索引可用，引用能定位页码/段落。
-- 验证：Recall@K、MRR 和删除测试。
-- 依赖：T000。
-
-### T005：定义评分量表
-
-- [ ] 确认句子/作文维度、权重、CEFR 映射和免责声明。
-- [ ] 建立最小人工标注集。
-- [ ] 输出 ADR-006。
-- 验收：量表可由人类独立使用，模型输出 schema 完整。
-- 验证：双人抽样评分一致性评审。
-- 依赖：T000。
-
-## Checkpoint A：架构确认
-
-- [ ] T000–T005 完成。
-- [ ] ADR-001 至 ADR-006 通过评审。
-- [ ] 负责人明确批准进入实现阶段。
-
-## Phase 1：工程基础
-
-### T010：创建 Monorepo 与 CI
-
-- [ ] 建立 Tauri/React、Python AI Core、contracts 和测试目录。
-- [ ] 配置 pnpm、uv、Rust 锁文件与 GitHub Actions。
-- 验收：空骨架在 Windows CI 完整构建。
-- 验证：lint、typecheck、unit test、build 全绿。
-- 依赖：Checkpoint A。
-
-### T011：实现版本化本地契约
-
-- [ ] 定义统一响应、错误、Citation、Job 和进度事件 schema。
-- [ ] 自动生成 TypeScript/Python 类型并检测漂移。
-- 验收：两端对正反例得出相同校验结果。
-- 验证：契约测试。
-- 依赖：T010。
-
-### T012：实现设置和密钥存储
-
-- [ ] 模型、数据目录、隐私模式和知识库设置。
-- [ ] DeepSeek/Oxford 凭据存入安全存储。
-- 验收：UI 不能读取完整密钥；日志和数据库中没有密钥。
-- 验证：E2E + secret scan。
-- 依赖：T011。
-
 ## Checkpoint B：基础设施
+
+> 与 Checkpoint A 一同门控 Phase 2；其中「Sidecar 异常能自动恢复」依赖 T001 的结论。
 
 - [ ] 干净 Windows VM 安装启动通过。
 - [ ] CI 全绿且无密钥泄露。

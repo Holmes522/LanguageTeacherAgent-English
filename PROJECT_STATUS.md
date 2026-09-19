@@ -37,13 +37,15 @@
 | 字段 | 当前值 |
 |---|---|
 | Agent/负责人 | ZCode（用户 Holmes 授权） |
-| 当前任务 | M00 Spec 编写：`docs/specs/SPEC-M00-foundation-contracts.md`（待用户审阅） |
-| 当前模块 | `M00-foundation-contracts`（Spec 编写阶段，未开始编码） |
+| 当前任务 | M00 Spec 审阅修订：`docs/specs/SPEC-M00-foundation-contracts.md` v1.1（待复核） |
+| 当前模块 | `M00-foundation-contracts`（Spec 修订阶段，未开始编码） |
 | 分支 | `feat/M00-foundation-contracts`（基于 `origin/main` @ `ddd16be`） |
-| 状态 | `IN_PROGRESS`（Spec 待审阅；批准前不编码） |
+| 状态 | `IN_PROGRESS`（Spec v1.1 待复核；复核通过前不安装、不编码） |
 | 开始时间 | 2026-09-19 |
-| 计划修改文件 | `docs/specs/SPEC-M00-foundation-contracts.md`（新建）、`PROJECT_STATUS.md` |
-| 下一检查点 | 用户审阅并批准 M00 Spec → 安装 pnpm/uv/Rust 工具链 → 执行 T010（Monorepo 与 CI） |
+| 计划修改文件 | `docs/specs/SPEC-M00-foundation-contracts.md`、`PROJECT_STATUS.md`、`tasks/todo.md`、`tasks/plan.md`、`docs/英语老师AI-Agent-统一产品与技术开发方案.md` |
+| 下一检查点 | Spec v1.1 复核通过 → 运行 `scripts/preflight.ps1` 工具链预检 → 安装并固化 pnpm/uv/Rust → 执行 T010 |
+
+**执行顺序（2026-09-19 用户裁定，替代此前冲突描述）**：工具链预检与安装（T010 的第一步）→ `M00（T010–T012）` → `T001–T005` 风险 Spike → `Checkpoint A` → Phase 1 及之后的业务模块。M00 不再排在 Spike 之后。
 
 ## 4. 模块状态总表
 
@@ -51,7 +53,7 @@
 
 | 模块 ID | 模块 | 优先级 | 状态 | 最后验证 | 证据/PR | 下一步 |
 |---|---|:---:|---|---|---|---|
-| `M00-foundation-contracts` | Monorepo、契约、CI、ADR 与规则 | P0 | IN_PROGRESS | 2026-09-19 Q1–Q8 已确认；`main` @ `237a337` 已同步 | [`T000 决策`](docs/decisions/T000-产品边界与技术决策建议.md)、`origin/main` | 编写并审阅 M00 Spec；完成 T001–T005 Spike 并批准 ADR-001~007 |
+| `M00-foundation-contracts` | Monorepo、契约、CI、ADR 与规则 | P0 | IN_PROGRESS | 2026-09-19 Q1–Q8 已确认；Spec v1.1 已修订待复核；`main` @ `ddd16be` 已同步 | [`SPEC-M00`](docs/specs/SPEC-M00-foundation-contracts.md)、[`T000 决策`](docs/decisions/T000-产品边界与技术决策建议.md) | 复核 Spec v1.1 → 工具链预检与安装 → T010–T012（**先于** T001–T005 Spike） |
 | `M01-desktop-shell` | Tauri 桌面壳、Sidecar、安装更新 | P0 | NOT_STARTED | — | — | Sidecar Spike |
 | `M02-local-storage-settings` | SQLite、迁移、设置、密钥 | P0 | NOT_STARTED | — | — | 等待 M00/M01 |
 | `M03-llm-gateway` | DeepSeek、流式、结构化输出、预算 | P0 | NOT_STARTED | — | — | DeepSeek Spike |
@@ -107,15 +109,18 @@
 
 - Git：已初始化，默认分支 `main`，`origin` = `https://github.com/Holmes522/LanguageTeacherAgent-English.git`。
 - 远程只读核对（2026-09-19，写操作前执行）：公开仓库、`default_branch=main`、`size=0`、无分支/标签/提交（`commits` API 返回 409、`contents` 返回 404），确认为空仓库后才执行首次推送。
-- 首次同步（2026-09-19）：`main` 初始提交 `237a337f144a391477734bca8c70dbf0aedc820d`，提交信息 `docs: initialize project specifications and T000 decisions`；已推送至 `origin/main`，本地 `HEAD` 与 `origin/main` 一致；未使用 force push。
+- 首次同步（2026-09-19）：`main` 初始提交 `237a337f144a391477734bca8c70dbf0aedc820d`（`docs: initialize project specifications and T000 decisions`），随后同步状态更新提交 `ddd16be24a97bb3b0bbe1992c29ddadd36018d3a`（`docs: record GitHub remote sync status and initial commit SHA`）。
+- `main` 当前 SHA：**`ddd16be24a97bb3b0bbe1992c29ddadd36018d3a`**；本地 `main` 与 `origin/main` 一致。两次推送均未使用 force push。
+- 功能分支：`feat/M00-foundation-contracts`（基于 `origin/main` @ `ddd16be`），已推送并与 `origin` 同步。
 - 同步内容：`.gitignore`、`AGENTS.md`、`CLAUDE.md`、`PROJECT_STATUS.md`、`docs/**`、`tasks/**`，共 10 个文本文件、3,945 行。
 - 排除内容：`.claude/settings.local.json`（IDE/Agent 本地文件，已由 `.gitignore` 忽略，未入库）。
 - 入库安全扫描：暂存内容无密钥、真实用户数据、未授权词典内容、模型权重或构建产物；工作区无二进制文件与超过 200 KB 的大文件。
 - 源码：尚未创建。
 - 测试：尚未创建。
 - CI：尚未创建。
-- 已就绪的 Spec：[`docs/specs/SPEC-M00-foundation-contracts.md`](docs/specs/SPEC-M00-foundation-contracts.md)（v1.0-draft，**待用户审阅**）。
-- 本机工具链基线（2026-09-19 只读核对）：Git 2.51.0.windows.1（`core.autocrlf` 生效，工作区 CRLF/仓库 LF，待 `.gitattributes` 统一）；Node v22.20.0 ✅；npm 10.9.3（仅引导）；**pnpm 未安装**；系统 Python 3.13.7（项目固定 3.12，由 uv 管理，**不使用系统解释器**）；**uv 未安装**；**Rust/Cargo 未安装**。
+- 已就绪的 Spec：[`docs/specs/SPEC-M00-foundation-contracts.md`](docs/specs/SPEC-M00-foundation-contracts.md)（**v1.1**，已按用户 2026-09-19 审阅结论修订，待复核）。
+- 本机工具链基线（2026-09-19 只读核对）：Git 2.51.0.windows.1（`core.autocrlf` 生效，工作区 CRLF/仓库 LF，待 `.gitattributes` 统一）；Node v22.20.0 ✅；npm 10.9.3（仅引导）；**pnpm 未安装**；系统 Python 3.13.7（项目固定 3.12，由 uv 管理，**不使用系统解释器**）；**uv 未安装**；**Rust/Cargo 未安装**；**MSVC C++ Build Tools 未核对**；**WebView2 Runtime 未核对**；**VBSCRIPT 按需功能未核对**。
+- 工具链预检：清单见 Spec §3.2，脚本 `scripts/preflight.ps1` 于 T010 落地；预检必须在安装与编码之前完成并公开逐项结果。
 - 已有规划文档：统一方案、实施计划、任务清单和两份历史方案。
 - 未授权事项（勿自行执行）：分支保护、PR 创建、`gh` CLI 安装与认证、Actions 首次运行、安装依赖与生成脚手架（须在 M00 Spec 获批后）。
 
@@ -127,6 +132,14 @@
 - 历史长版 PRD 将账号鉴权列为 P0；本地单用户桌面 MVP 不需要账号，账号/云同步后移。
 - 历史长版 PRD使用 `bge-m3` 和本地 Reranker；统一方案首版采用资源更轻的 `bge-small-en-v1.5`，把 `bge-m3` 作为可选高质量模型包。
 - 历史方案对题库优先级不一致；统一方案把“PDF/DOC/DOCX 可导入、可检索”设为 P0，把高精度自动切题和人工复核工作台设为 P1。
+
+2026-09-19 新发现并已解决的冲突：
+
+- **执行顺序冲突**：`tasks/todo.md` 把 T010（M00 实现）的依赖写成“Checkpoint A：T000–T005 完成且 ADR-001~006 批准”，而统一方案 §9 把 `M00` 列为所有模块的前置，`PROJECT_STATUS.md` 又把下一步写成先做 M00 Spec 再执行 T010。
+  **裁定（用户 2026-09-19）**：`M00（T010–T012）` **先于** `T001–T005` Spike 执行。理由：Spike 的可复现证据需要 Monorepo、CI、契约信封与锁文件作为载体，否则 Spike 结论无处落地。
+  **后果**：`Checkpoint A` 改为只门控 Phase 1 及之后的业务模块（T020+），不再门控 T010–T012；T001–T005 仍然产出 ADR-001~007。已同步修订 `tasks/todo.md` 与本节。
+- **锁文件位置冲突**：统一方案 §22 把 `uv.lock` 列在仓库根，但 uv 的 lockfile 必须与定义项目的 `pyproject.toml` 同目录，而根目录没有 Python 项目。
+  **裁定（用户 2026-09-19，D-4）**：`uv.lock` 放在 `services/ai-core/uv.lock`；统一方案 §22 的旧描述已同步修正，并在该节加注锁文件位置说明。
 
 ## 10. 模块完成后的强制更新模板
 
@@ -163,6 +176,39 @@
 
 ## 11. 交接记录
 
+### 2026-09-19 — M00 Spec 审阅修订（READY_FOR_REVIEW）
+
+- Agent/负责人：ZCode（用户 Holmes 审阅）
+- 状态：READY_FOR_REVIEW（等 Spec v1.1 复核；复核通过后才进入工具链预检与安装）
+- 分支：`feat/M00-foundation-contracts`（基于 `origin/main` @ `ddd16be`）
+- Commit/PR：本分支提交；未创建 PR（用户未授权），未 push `main`，未 force push
+- 完成内容：
+  - Spec 升级到 v1.1，逐条落实用户审阅结论 D-1～D-6 与 7 项必改要求（详见 Spec §14 变更记录）。
+  - 修订 1：所有 uv 命令由 `--frozen` 改为 `--locked`，并新增 `uv lock --check`；同步修正 `tasks/plan.md` 的 Verification Commands。
+  - 修订 2：新增 Spec §5.3「Rust 运行时 JSON Schema 校验」，覆盖 WebView↔Rust、Rust↔Python 四条边的双向校验、`ENGM.CONTRACT.SCHEMA_INVALID`、版本协商与 `schema-manifest.json` 嵌入一致性。
+  - 修订 3：Python 生成物改为可安装本地包 `engm-contracts`（`packages/contracts/python/`），由 uv path 依赖安装；明确禁止 `PYTHONPATH`/`sys.path` 技巧并加入 AC-3 检查。
+  - 修订 4：WebView 无外网改为 ESLint + CSP `connect-src` + 不授予 HTTP capability 三层防护（Spec §5.4），三层各自可独立验证（AC-9）。
+  - 修订 5：工具链预检新增 MSVC C++ Build Tools 与 WebView2（Spec §3.2 含具体命令），MSI 前置新增 VBSCRIPT 检查（Spec §3.3、AC-11）。
+  - 修订 6：修正 `PROJECT_STATUS.md` 的 `main` SHA（`237a337` → `ddd16be`，并区分初始提交与状态提交）与 M00/T010 对 Phase 0 Spike 的顺序矛盾（已裁定 M00 在前，见 §9）；同步更新 `tasks/todo.md`。
+  - 修订 7：清理新 Spec 的 Markdown 行尾空格。
+  - 附带修正：统一方案 §22 的 `uv.lock` 位置（D-4）并加注锁文件位置说明。
+- 未完成内容：Spec v1.1 未复核；工具链未预检、未安装；未生成 Tauri 脚手架；未开始 T001–T005。
+- 关键文件：`docs/specs/SPEC-M00-foundation-contracts.md`、`PROJECT_STATUS.md`、`tasks/todo.md`、`tasks/plan.md`、`docs/英语老师AI-Agent-统一产品与技术开发方案.md`
+- 接口/Schema 变化：Spec 定义契约骨架与 Rust 运行时校验策略，**仍未创建实际文件**
+- 数据迁移：无
+- ADR/决策：D-1～D-6 已由用户确认并写入 Spec §11；Spike 阶段的 ADR-001～ADR-007 仍未产出
+- 验证命令与结果：
+  - `git diff --check` → 退出码 0（仅 CRLF 转换提示；无行尾空格、无冲突标记）
+  - `git status --short` → 5 个文件被修改：`PROJECT_STATUS.md`、`docs/specs/SPEC-M00-foundation-contracts.md`、`docs/英语老师AI-Agent-统一产品与技术开发方案.md`、`tasks/plan.md`、`tasks/todo.md`
+  - 行尾空格检查（新 Spec）→ 0 命中（`PROJECT_STATUS.md` 与统一方案的文件头旧行尾空格为既有内容，本轮未扩大改动范围）
+  - `--frozen` 残留检查 → 仅剩 `pnpm install --frozen-lockfile` 与对本次变更的说明文字；无 `uv sync --frozen`
+  - 内部链接检查（遍历 10 个 Markdown 文件、18 条相对链接）→ 全部可解析
+  - 结构检查 → `tasks/todo.md` 无重复任务块（T001/T010 各出现 1 次）
+- Eval/性能/Token 结果：不适用（无代码）
+- 已知问题与风险：见 Spec §13；最前置风险是 pnpm/uv/Rust 未安装且 MSVC/WebView2/VBSCRIPT 未核对，T010 必须先过预检
+- 环境或密钥要求：无需任何密钥
+- 下一个 Agent 应先做：等用户复核 Spec v1.1；通过后落地 `scripts/preflight.ps1` 并运行工具链预检，再执行 T010
+
 ### 2026-09-19 — M00 Spec 编写（READY_FOR_REVIEW）
 
 - Agent/负责人：ZCode（用户 Holmes 审阅）
@@ -191,7 +237,7 @@
 
 - Agent/负责人：ZCode（用户 Holmes 授权）
 - 状态：DONE
-- 分支：`main`（`origin/main` @ `237a337`）
+- 分支：`main`（首次推送时为 `origin/main` @ `237a337`；随后同步状态提交为 `ddd16be`，当前值见 §8）
 - Commit/PR：`237a337f144a391477734bca8c70dbf0aedc820d`（无 PR，用户未授权创建）
 - 完成内容：
   - 按启动顺序完整阅读 `PROJECT_STATUS.md`、`AGENTS.md`、`CLAUDE.md`、统一方案、T000 决策、`tasks/plan.md`、`tasks/todo.md`。

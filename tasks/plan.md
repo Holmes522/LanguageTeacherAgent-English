@@ -91,14 +91,17 @@ contracts → desktop shell / local storage → LLM gateway / knowledge registry
 
 ```powershell
 pnpm install --frozen-lockfile
-uv sync --frozen
+uv sync --locked --project services/ai-core
+uv lock --check --project services/ai-core
 pnpm lint
 pnpm typecheck
 pnpm test
-uv run ruff check .
-uv run pytest
+uv run --project services/ai-core ruff check .
+uv run --project services/ai-core pytest
 pnpm tauri build
 ```
+
+> `uv sync --locked`（而非 `--frozen`）用于断言 `uv.lock` 与 `pyproject.toml` 一致；`--frozen` 只跳过更新，锁文件过期时不会报错。完整命令、Rust 运行时契约校验与验收标准见 [`docs/specs/SPEC-M00-foundation-contracts.md`](../docs/specs/SPEC-M00-foundation-contracts.md)。
 
 ## Risks and Mitigations
 
