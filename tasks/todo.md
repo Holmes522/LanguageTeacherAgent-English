@@ -1,11 +1,13 @@
 # 英语老师 AI Agent 桌面客户端任务清单
 
-> 当前状态：T000 已完成（含 2026-09-19 GitHub 安全同步，`main` @ `ddd16be`）；M00 Spec v1.3 **已复核通过**（见 [`docs/specs/SPEC-M00-foundation-contracts.md`](../docs/specs/SPEC-M00-foundation-contracts.md)）；`T010-A`（Monorepo 骨架与可复现安装边界）与 `T010-B`（GitHub Actions 最小 CI）**已完成并在本机验证**；**`T011`（版本化本地契约）待做**。先完整阅读 [`PROJECT_STATUS.md`](../PROJECT_STATUS.md)。每完成一个模块或垂直切片，必须同步更新 `PROJECT_STATUS.md`。
+> 当前状态：**开发侧重点已转为「产品可用优先」**（2026-09-19 用户指令，优先于下方执行顺序）：目标是让用户能在自己电脑上真正用起来；CI / 发布工程 / 质量门禁投入暂停，已建成的不拆除。下一步：`T012`（设置与密钥存储，含本机凭据配置）→ 桌面壳可跑通的最小闭环（M01 + M03）。详见 `PROJECT_STATUS.md` §3 与最新交接记录。
+>
+> 历史状态：T000 已完成（含 2026-09-19 GitHub 安全同步，`main` @ `ddd16be`）；M00 Spec v1.3 **已复核通过**（见 [`docs/specs/SPEC-M00-foundation-contracts.md`](../docs/specs/SPEC-M00-foundation-contracts.md)）；`T010-A`（Monorepo 骨架与可复现安装边界）与 `T010-B`（GitHub Actions 最小 CI）**已完成并在本机验证**；`T011`（版本化本地契约）**已完成并在 GitHub 上 5/5 通过验证**。先完整阅读 [`PROJECT_STATUS.md`](../PROJECT_STATUS.md)。每完成一个模块或垂直切片，必须同步更新 `PROJECT_STATUS.md`。
 >
 > **执行顺序（2026-09-19 用户裁定）**：工具链预检与安装 → `M00（T010–T012）` → `T001–T005` 风险 Spike → `Checkpoint A` → Phase 2 及之后的业务模块。
 > 说明：M00 是 Spike 的载体（Spike 证据需要 Monorepo、CI、契约信封与锁文件才能复现），因此 **M00 先于 Spike**；本清单把原 Phase 0（Spike）与原 Phase 1（工程地基）合并为 **Phase 0**，Phase 2 起的编号与统一方案一致。`Checkpoint A` 只门控 Phase 2 及之后的业务模块，不再门控 T010–T012。
 >
-> 门控：新增依赖或修改数据 Schema 前需先获批准；**CI 已在 GitHub 上 5/5 通过**（[run #2](https://github.com/Holmes522/LanguageTeacherAgent-English/actions/runs/35431617828)，触发器为 PR），可用同样的方式复验。
+> 门控：新增依赖或修改数据 Schema 前需先获批准（**Spike 与 Checkpoint A 已按用户 2026-09-19 指令不再作为产品功能的硬门禁**）；**CI 已在 GitHub 上 5/5 通过**（[run #2](https://github.com/Holmes522/LanguageTeacherAgent-English/actions/runs/35431617828)，触发器为 PR），可用同样的方式复验。
 
 ## Phase 0：工程地基与风险验证
 
