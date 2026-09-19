@@ -133,6 +133,18 @@
 - 验证：双人抽样评分一致性评审。
 - 依赖：T011。
 
+
+### 收尾项（M00 合并时执行，不属任何模块）
+
+> 来源：2026-09-19 的密钥扫描历史命中。用户已确认处理方式：**保留例外 → squash 合并 → 删除例外**。
+
+- [ ] **合并 PR #1 必须使用 squash merge**（不要用 "Create a merge commit"）。理由：提交 `55ff124`
+      含 3 处与真实密钥形态无法区分的测试常量，普通合并会把它的 blob 带进 `main` 的历史。
+- [ ] 合并后**删除 `.gitleaks.toml` 中的 `[[allowlists]]` 例外**（该例外自身注释里的移除条件第 1 条即此）。
+- [ ] 删除后重跑 `pnpm check:secrets`，确认 `main` 上仍是 `no leaks found`。
+- [ ] 可选：把 `services/ai-core/tests/test_sidecar_http.py:318` 的 `sk-live-` 前缀测试值统一成
+      `engm-test-sentinel-*`（低熵、未被规则命中，不影响门禁）。
+
 ## Checkpoint A：架构确认
 
 > 只门控 Phase 2 及之后的业务模块；T010–T012 不再受此门控（2026-09-19 裁定）。
