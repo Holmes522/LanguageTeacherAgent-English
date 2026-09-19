@@ -348,8 +348,9 @@ B-4 不依赖单一机制，三层各自独立可测、任一失效仍不放开�
 
 `contracts` job 的到期日已在 T011 兑现：该 job 现已落入 `ci.yml`，契约漂移与三方一致性从 T011 起都有真实门禁。
 它需要 pnpm、uv（运行 `datamodel-code-generator`）与 Rust（三方一致性里的 Rust 一方）三种工具，缓存配置与
-`rust` job 一致。**该 job 与其余四个 job 一样从未在 GitHub 上运行过**——工作流已推送到分支，但无 PR、未推
-`main`，Actions 未被触发。
+`rust` job 一致。**首次真实运行的证据**：2026-09-19 [run #2](https://github.com/Holmes522/LanguageTeacherAgent-English/actions/runs/35431617828)（head `7a6a4d5`）**5/5 job 通过**——`web` 80s、`python` 33s、`rust` 160s、`contracts` 286s、`secrets` 19s，总耗时 4.8 分钟。首次运行（run #1，`c2f7a46`）暴露的两个问题已修复：`gitleaks-action` 在 Windows 上装不了 8.30.1（见 ADR-008），以及三方一致性脚本在 Windows 上需经由 shell 才能启动 `.cmd` shim。
+
+**触发方式的重要限制**：`workflow_dispatch` 在本仓库**不可用**——Actions API 只暴露默认分支上存在的工作流，而 `ci.yml` 只存在于功能分支。实测：`GET /actions/workflows → total_count = 0`、`POST .../dispatches → HTTP 404`（而 `GET /actions/permissions → enabled = true`）。`push` 触发器只监听 `main`，`main` 禁止直接推送，因此在当前分支策略下 **PR 是唯一可行的触发器**。
 
 ### 8.1 三方 Action 的固定 SHA 记录
 

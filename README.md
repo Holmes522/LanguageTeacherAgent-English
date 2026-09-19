@@ -35,7 +35,7 @@ EngMentor 是一款 **Windows 优先的本地桌面英语学习助手**。
 | 源代码（React / Rust / Python） | **只有空骨架**：可构建、可测试，但没有任何教学功能 |
 | 本机安全自检（密钥扫描、敏感路径忽略、能力清单） | **已交付并在本机通过**（gitleaks 8.30.1） |
 | 版本化契约内容（JSON Schema 与生成类型） | **尚未创建**（T011） |
-| CI（GitHub Actions） | **已创建，但从未在 GitHub 上运行过**（T010-B；契约 job 属 T011） |
+| CI（GitHub Actions） | **已在 GitHub 上真实运行并通过 5/5**（[run #2](https://github.com/Holmes522/LanguageTeacherAgent-English/actions/runs/35431617828)，4.8 分钟）：`web` / `python` / `rust` / `contracts` / `secrets` |
 | Windows 安装包 | **尚未创建** |
 | 界面与截图 | **不存在**（骨架界面只显示"还没做什么"） |
 
@@ -259,7 +259,7 @@ winget install --id Gitleaks.Gitleaks --version 8.30.1 -e
 |---|---|
 | 启动桌面应用（开发模式） | 待 M01 完成后补充 |
 | 打包 Windows 安装包 / 签名 | 待 T050 完成后补充 |
-| CI 流程（GitHub Actions） | **工作流已提交，但从未在 GitHub 上运行过**；要验证需在 Actions 页面手动触发（`workflow_dispatch`）或开 PR |
+| CI 流程（GitHub Actions） | 已跑通（[run #2](https://github.com/Holmes522/LanguageTeacherAgent-English/actions/runs/35431617828)，5/5）。**触发器是 PR**——`workflow_dispatch` 在本仓库不可用，因为工作流不在默认分支上（Actions API 只暴露默认分支的工作流） |
 
 在对应任务落地并实测之前，README 不会写入这些命令。
 

@@ -5,7 +5,7 @@
 > **执行顺序（2026-09-19 用户裁定）**：工具链预检与安装 → `M00（T010–T012）` → `T001–T005` 风险 Spike → `Checkpoint A` → Phase 2 及之后的业务模块。
 > 说明：M00 是 Spike 的载体（Spike 证据需要 Monorepo、CI、契约信封与锁文件才能复现），因此 **M00 先于 Spike**；本清单把原 Phase 0（Spike）与原 Phase 1（工程地基）合并为 **Phase 0**，Phase 2 起的编号与统一方案一致。`Checkpoint A` 只门控 Phase 2 及之后的业务模块，不再门控 T010–T012。
 >
-> 门控：新增依赖或修改数据 Schema 前需先获批准；**CI 工作流已提交但从未在 GitHub 上运行过**，验证它需要在 Actions 页面手动触发（`workflow_dispatch`）或开 PR。
+> 门控：新增依赖或修改数据 Schema 前需先获批准；**CI 已在 GitHub 上 5/5 通过**（[run #2](https://github.com/Holmes522/LanguageTeacherAgent-English/actions/runs/35431617828)，触发器为 PR），可用同样的方式复验。
 
 ## Phase 0：工程地基与风险验证
 
@@ -29,7 +29,7 @@
 - [x] 落地 `scripts/audit-capabilities.mjs` 与 `pnpm check:capabilities`（SPEC-M00 §5.4 第 3 层、AC-9）：审计 capability 文件的权限白名单、`Cargo.toml` 的特权插件与前端 `@tauri-apps/plugin-*` 依赖，并打印完整授权清单。
 - [x] 配置三个权威 lockfile：`pnpm-lock.yaml`、`services/ai-core/uv.lock`、`apps/desktop/src-tauri/Cargo.lock`，并用 frozen/locked 模式复验。
 - [x] **T010-B**：落地 `.github/workflows/ci.yml`（`web` / `python` / `rust` / `secrets` 四个 job，`windows-latest`，零密钥依赖，六条三方 Action 全部固定完整 SHA，触发器含 `push(main)` / `pull_request` / `workflow_dispatch`）。**`contracts` job 推迟到 T011**，因为它的两步命令（`pnpm contracts:generate`、`pnpm test:contracts`）都是 T011 的交付物。
-  - **验收说明（重要）**：工作流已提交并推送，但**从未在 GitHub 上运行过**——本仓库当时不允许创建 PR，也不允许推 `main`，而只有前两个触发器时不会有任何运行记录。因此 T010-B 在本机范围内可验证的部分（两个自检脚本、四条 job 用的全部命令）已验证；"CI 在 GitHub 上确实能跑通"这一项**尚未验证**，不得据此声称 CI 可用。
+  - **验收说明（已在 T011 之后补齐）**：本条写下时工作流尚未在 GitHub 上运行过（当时不允许创建 PR、不允许推 `main`，只有前两个触发器时不会有运行记录）。该缺口已由 2026-09-19 的真实运行补上：[run #2](https://github.com/Holmes522/LanguageTeacherAgent-English/actions/runs/35431617828) 显示 **5/5 job 通过**，其中 `secrets` 与 `contracts` 两个 job 在首次运行（run #1）中先失败、修复后才通过（见 ADR-008 与 PROJECT_STATUS 的对应交接记录）。
 - 预检现状（2026-09-19 SDK 就绪后，14 项 **ok=13 missing=0 unknown=1**，`VERDICT Ready`）：Git 2.51.0 / Node v22.20.0 / pnpm 12.4.2 / uv 0.12.17 / Python 3.12 / rustc 1.98.1 / cargo 1.98.1 / **msvc（VC 工具 14.44.35207 + link.exe + SDK 10.0.26100.0）** / Corepack 0.34.0 / rustup 1.29.1 / winget v1.29.290 / WebView2 153.0.4234.32；唯一 unknown 为 Advisory 级 vbscript（需提权查询，仅 MSI 前置项）。
 - 验收：Spec AC-1、AC-2、AC-6、AC-9、AC-10、AC-12、AC-15、AC-16、AC-17、AC-18 通过；两个自检脚本本机通过；README 与产品实际状态一致。**CI 在 GitHub 上的首次真实运行仍待完成**（需手动触发或开 PR）。
 - 验证：`pnpm install --frozen-lockfile`、`uv sync --locked --project services/ai-core`、`uv lock --check --project services/ai-core`、`cargo build --locked`；`pnpm lint`、`pnpm typecheck`、`pnpm test`、`pnpm build`、`pnpm contracts:check`、`pnpm check:secrets`、`pnpm check:capabilities` 全绿。
@@ -46,7 +46,7 @@
 - [x] Rust 运行时 Schema 校验：`jsonschema` crate 0.56.0（`default-features = false`）、`include_str!` 嵌入、`OnceLock` 缓存；四条边界的畸形输入一律返回 `ENGM.CONTRACT.SCHEMA_INVALID`（不 panic、详情不含用户正文）；版本不一致返回 `ENGM.CONTRACT.VERSION_MISMATCH`；`schema-manifest.json` 的 SHA-256 嵌入一致性断言（AC-8）。
 - [x] TS / Python / Rust 三方共用 `packages/contracts/tests/fixtures/contract-cases.json`，32 条正反例三方判定逐条一致（`pnpm test:contracts`）。
 - [x] **补齐 CI 的 `contracts` job**：安装 → `uv sync --locked` → `pnpm contracts:generate` → `git diff --exit-code --stat` → `pnpm test:contracts`；五个 job 的 Action SHA 沿用 §8.1 已记录值。
-- [ ] **在 GitHub 上真实跑通一次 CI**（含 `contracts` job）：需用户在 Actions 页面手动触发（`workflow_dispatch`）或开 PR；在此之前不得把 CI 记为已验证。
+- [x] **在 GitHub 上真实跑通一次 CI**（含 `contracts` job）：[run #2](https://github.com/Holmes522/LanguageTeacherAgent-English/actions/runs/35431617828)，5/5 job 成功（`web` 80s / `python` 33s / `rust` 160s / `contracts` 286s / `secrets` 19s）。首次运行（run #1）暴露的 2 个问题见下方记录与 ADR-008。注意触发器是 `pull_request`——`workflow_dispatch` 在本仓库不可用（工作流不在默认分支上）。
 - 验收：Spec AC-3、AC-4、AC-5、AC-7、AC-8 本机通过；AC-4 的三方一致性以 32 条用例实测一致。
 - 验证（全部真实退出码 0）：`pnpm contracts:check`（无漂移；手工改生成物则为 1）、`pnpm test:contracts`、`cargo test --locked`（13 项）、`uv sync --locked`、`uv lock --check`、`pnpm lint/typecheck/test/build`、`pnpm check:secrets`、`pnpm check:capabilities`。
 - 依赖：T010（已完成）。

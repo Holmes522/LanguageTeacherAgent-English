@@ -40,10 +40,10 @@
 | 当前任务 | `T011`（版本化本地契约）**已完成并在本机验证**：6 个 schema、生成链路、可安装 Python 契约包、Rust 运行时校验、32 条三方一致性用例、CI 的 `contracts` job。**CI 仍未在 GitHub 上运行过**（无 PR、不推 `main`、Actions 未触发）。`T012`（设置与密钥存储）待做 |
 | 当前模块 | `M00-foundation-contracts`（T010、T011 完成；T012 未开始） |
 | 分支 | `feat/M00-foundation-contracts`（基于 `origin/main` @ `ddd16be`） |
-| 状态 | `IN_PROGRESS`；T011 的 15 项验证命令全部本机 exit 0（含契约漂移可检出、三方一致性 32/32）；CI 工作流已推送但从未运行 |
+| 状态 | `IN_PROGRESS`；T011 的 15 项验证命令全部本机 exit 0（含契约漂移可检出、三方一致性 32/32）；**CI 已在 GitHub 上真实运行并通过 5/5**（[run #2](https://github.com/Holmes522/LanguageTeacherAgent-English/actions/runs/35431617828)，`7a6a4d5`，4.8 分钟） |
 | 开始时间 | 2026-09-19 |
 | 计划修改文件 | `package.json`、`pnpm-workspace.yaml`、`.npmrc`、`.gitattributes`、`.env.example`、`.gitleaks.toml`、`eslint.config.mjs`、`.github/workflows/ci.yml`、`apps/desktop/**`、`packages/contracts/**`、`services/ai-core/**`、`scripts/{contracts-check,check-ignored,check-secrets,audit-capabilities}.mjs`、`README.md`、`PROJECT_STATUS.md`、`tasks/todo.md` |
-| 下一检查点 | 在 GitHub 上实跑一次 CI（Actions 页 `workflow_dispatch`，此时有 5 个 job，含新的 `contracts`）→ 授权 `T012`（设置与密钥存储） |
+| 下一检查点 | 授权 `T012`（设置与密钥存储）；另需用户决定 draft PR #1 的去向（它是为触发 CI 而开，不合并） |
 
 **执行顺序（2026-09-19 用户裁定，替代此前冲突描述）**：工具链预检与安装（T010 的第一步）→ `M00（T010–T012）` → `T001–T005` 风险 Spike → `Checkpoint A` → Phase 1 及之后的业务模块。M00 不再排在 Spike 之后。
 
@@ -53,7 +53,7 @@
 
 | 模块 ID | 模块 | 优先级 | 状态 | 最后验证 | 证据/PR | 下一步 |
 |---|---|:---:|---|---|---|---|
-| `M00-foundation-contracts` | Monorepo、契约、CI、ADR 与规则 | P0 | IN_PROGRESS | 2026-09-19 T011 完成：v1 契约 + 生成链路 + Rust 运行时校验 + 三方一致性 32/32 + `contracts` job；15 项验证命令 exit 0；**CI 工作流未在 GitHub 上运行过** | [`SPEC-M00`](docs/specs/SPEC-M00-foundation-contracts.md) v1.4、`packages/contracts/**`、`apps/desktop/src-tauri/src/contracts.rs`、`.github/workflows/ci.yml` | 在 GitHub 上实跑 CI（5 个 job）→ T012（设置与密钥）（**先于** T001–T005 Spike） |
+| `M00-foundation-contracts` | Monorepo、契约、CI、ADR 与规则 | P0 | IN_PROGRESS | 2026-09-19 T011 完成，且 **CI 已在 GitHub 上 5/5 通过**（[run #2](https://github.com/Holmes522/LanguageTeacherAgent-English/actions/runs/35431617828)） | [`SPEC-M00`](docs/specs/SPEC-M00-foundation-contracts.md) v1.5、`packages/contracts/**`、`apps/desktop/src-tauri/src/contracts.rs`、`.github/workflows/ci.yml`、[`ADR-008`](docs/decisions/ADR-008-ci-secret-scan-self-managed-gitleaks.md) | T012（设置与密钥）（**先于** T001–T005 Spike） |
 | `M01-desktop-shell` | Tauri 桌面壳、Sidecar、安装更新 | P0 | NOT_STARTED | — | — | Sidecar Spike |
 | `M02-local-storage-settings` | SQLite、迁移、设置、密钥 | P0 | NOT_STARTED | — | — | 等待 M00/M01 |
 | `M03-llm-gateway` | DeepSeek、流式、结构化输出、预算 | P0 | NOT_STARTED | — | — | DeepSeek Spike |
@@ -117,8 +117,8 @@
 - 入库安全扫描：暂存内容无密钥、真实用户数据、未授权词典内容、模型权重或构建产物；工作区无二进制文件与超过 200 KB 的大文件。
 - 源码：已创建（T010-A 空骨架；`apps/desktop`、`packages/contracts`、`services/ai-core`、`scripts/`）。
 - 测试：已创建（T010-A：vitest + pytest + cargo test；T010-B 前另有 Pester 53 项）。
-- CI：工作流已创建并推送（T010-B，`.github/workflows/ci.yml`），但**从未在 GitHub 上运行过**——无 PR、未推 `main`、Actions 未被触发。
-- 已就绪的 Spec：[`docs/specs/SPEC-M00-foundation-contracts.md`](docs/specs/SPEC-M00-foundation-contracts.md)（**v1.4**；v1.1 已复核通过，v1.2 增补 README 文档基线 AC-15～AC-18，v1.3 增补 §8 CI 落地契约与 §8.1 固定 SHA，v1.4 记录 T011 的契约来源、生成链路与运行时校验）。
+- CI：已在 GitHub 上**真实运行并通过**（2026-09-19，[run #2](https://github.com/Holmes522/LanguageTeacherAgent-English/actions/runs/35431617828)，head `7a6a4d5`，5/5 job 成功，耗时 4.8 分钟）：`web` 80s、`python` 33s、`rust` 160s、`contracts` 286s、`secrets` 19s。run #1（`c2f7a46`）为首次运行，暴露出 2 个只有真实 runner 才显现的问题，修复后第二次运行全绿。**触发器为 `pull_request`：`workflow_dispatch` 在本仓库不可用**（Actions API 只暴露默认分支上存在的工作流，而 `ci.yml` 只在功能分支上；实测 `total_count=0`、dispatch 返回 404）。因此仓库当前有一个 **draft PR #1** 用于承载 PR 触发器。
+- 已就绪的 Spec：[`docs/specs/SPEC-M00-foundation-contracts.md`](docs/specs/SPEC-M00-foundation-contracts.md)（**v1.5**；v1.1 已复核通过，v1.2 增补 README 文档基线 AC-15～AC-18，v1.3 增补 §8 CI 落地契约与 §8.1 固定 SHA，v1.4 记录 T011 的契约来源/生成链路/运行时校验，v1.5 记录首次真实 CI 运行后的两项修正）。
 - 文档基线：[`README.md`](README.md) 已建立（Living README，Pre-alpha 状态如实声明，用户使用指南按 10 个固定小节预留为"待实现"占位，不含未实现命令、虚构截图或下载地址）。维护规则见 [`AGENTS.md`](AGENTS.md)「README 维护规则」：README 与实际产品不一致时模块不得标记 `DONE`。
 - 本机工具链（2026-09-19 已安装并固定版本）：
   - Git `2.51.0.windows.1`（`core.autocrlf` 生效，工作区 CRLF/仓库 LF，待 `.gitattributes` 统一）；Node `v22.20.0`（已写入 `.node-version`）；npm `10.9.3`（仅引导）；Corepack `0.34.0`；winget `v1.29.290`；WebView2 Runtime `153.0.4234.32`。
@@ -162,7 +162,7 @@
 - 规模约束（本轮刻意不做）：无查词/语法/评分/RAG/导入/题库、无真实 API 调用、无密钥存储、无安装包、未启用 `bundle.active`、CI 的 `contracts` job（T011）、无 macOS 矩阵（P1）。
 - 待办提示：`winget list` 未把 Build Tools 2022 列为已安装包（不在其 ARP 记录中），因此后续升级/卸载应走 Visual Studio Installer 而不是 winget。
 - 已有规划文档：统一方案、实施计划、任务清单和两份历史方案。
-- 未授权事项（勿自行执行）：分支保护、PR 创建、`gh` CLI 安装与认证、**触发 Actions 运行**。注意：CI 工作流本身已按用户 2026-09-19 的指示提交入库（现为 5 个 job），但"让它在 GitHub 上真的跑一次"属于未授权范围，需用户操作或在 Actions 页手动触发。
+- 用户 2026-09-19 已授权：让 CI 在 GitHub 上运行（已完成，5/5 通过）。仍未授权/未执行：分支保护、合并 PR、推送 `main`、`gh` CLI 安装与认证。
 
 ## 9. 发现的冲突
 
@@ -252,8 +252,9 @@
     （CI 从此刻起可被真实触发）也是需要用户知晓的状态变化：仓库从此有了一个 open PR。
   - 若用户希望保持"无 PR"状态，替代方案是把 `ci.yml` 推到 `main`（属于禁止操作），或在 Actions 页面
     手动触发（当前不可用）。这一取舍已如实记录。
-- 下一个 Agent 应先做：确认修复后的第二次 CI 运行 5/5 通过；若通过，把 SPEC/README 中"CI 从未运行过"
-  的表述改为已运行并附 run 链接，再进入 T012。
+- **修复后的第二次运行结果：5/5 全部通过**（[run #2](https://github.com/Holmes522/LanguageTeacherAgent-English/actions/runs/35431617828)，head `7a6a4d5`，4.8 分钟：`web` 80s / `python` 33s / `rust` 160s / `contracts` 286s / `secrets` 19s）。
+- 文档已同步：README、`tasks/todo.md`、SPEC-M00 §8 中"CI 从未运行过"的表述已改为已运行并附 run 链接。
+- 下一个 Agent 应先做：向用户确认 draft PR #1 的去向（保留以获得 PR 触发器 / 关闭并改用其它触发器策略），然后进入 **T012**（设置与密钥存储）。
 ### 2026-09-19 — T011：版本化本地契约与三方一致性（DONE；CI 仍未在 GitHub 上运行）
 
 - Agent/负责人：ZCode（用户授权 T011）
