@@ -37,15 +37,19 @@
 
 #### T011：实现版本化本地契约
 
-- [ ] 定义统一响应、错误、Citation、Job 和进度事件 schema（JSON Schema 2020-12）。
-- [ ] 自动生成 TypeScript 与 Python 类型（json-schema-to-typescript + datamodel-code-generator）并检测漂移。
-- [ ] Python 生成物落在可安装包 `engm-contracts`（`packages/contracts/python/`），由 uv path 依赖消费，禁止 `PYTHONPATH` 技巧。
-- [ ] 落地 Rust 运行时 Schema 校验：覆盖 WebView↔Rust 与 Rust↔Python 四条边的双向校验，失败返回 `ENGM.CONTRACT.SCHEMA_INVALID`；`schema-manifest.json` 嵌入一致性测试。
-- [ ] TS / Python / Rust 三方使用同一组正反例 fixtures，结论必须一致。
-- [ ] **补齐 CI 的 `contracts` job**（T010-B 明确推迟到这里）：校验 JSON Schema → `pnpm contracts:generate` → `git diff --exit-code`（漂移即失败）→ `pnpm test:contracts`。在它落地前，CI 不检查契约漂移。
-- 验收：Spec AC-3、AC-4、AC-5、AC-7、AC-8 通过；CI 的 `contracts` job 在 GitHub 上真实跑通。
-- 验证：`pnpm contracts:check`、`pnpm test:contracts`、`cargo test --locked`。
-- 依赖：T010。
+> 状态：**本机已完成并验证**；唯一未完成项是"CI 的 `contracts` job 在 GitHub 上真实跑通"——工作流已写入
+> `ci.yml`，但仓库无 PR、未推 `main`，Actions 从未被触发。
+
+- [x] 定义 6 个契约来源（JSON Schema 2020-12）：`envelope`（成功/失败两形态）、`error`、`error-codes`（注册表，4 个码）、`job`、`citation`、`version`。不定义业务命令字段。
+- [x] 自动生成 TypeScript 与 Python 类型（`json-schema-to-typescript` 16.0.0 + `datamodel-code-generator` 0.82.0）并检测漂移：`pnpm contracts:generate` / `pnpm contracts:check`（两段式，先断言再生成）。
+- [x] Python 生成物落在可安装包 `engm-contracts`（`packages/contracts/python/`），由 `services/ai-core` 以 path 依赖消费；无 `PYTHONPATH` / `sys.path` / `conftest` 注入；mypy `--strict` 覆盖生成物且**无需任何 overrides 放宽**。
+- [x] Rust 运行时 Schema 校验：`jsonschema` crate 0.56.0（`default-features = false`）、`include_str!` 嵌入、`OnceLock` 缓存；四条边界的畸形输入一律返回 `ENGM.CONTRACT.SCHEMA_INVALID`（不 panic、详情不含用户正文）；版本不一致返回 `ENGM.CONTRACT.VERSION_MISMATCH`；`schema-manifest.json` 的 SHA-256 嵌入一致性断言（AC-8）。
+- [x] TS / Python / Rust 三方共用 `packages/contracts/tests/fixtures/contract-cases.json`，32 条正反例三方判定逐条一致（`pnpm test:contracts`）。
+- [x] **补齐 CI 的 `contracts` job**：安装 → `uv sync --locked` → `pnpm contracts:generate` → `git diff --exit-code --stat` → `pnpm test:contracts`；五个 job 的 Action SHA 沿用 §8.1 已记录值。
+- [ ] **在 GitHub 上真实跑通一次 CI**（含 `contracts` job）：需用户在 Actions 页面手动触发（`workflow_dispatch`）或开 PR；在此之前不得把 CI 记为已验证。
+- 验收：Spec AC-3、AC-4、AC-5、AC-7、AC-8 本机通过；AC-4 的三方一致性以 32 条用例实测一致。
+- 验证（全部真实退出码 0）：`pnpm contracts:check`（无漂移；手工改生成物则为 1）、`pnpm test:contracts`、`cargo test --locked`（13 项）、`uv sync --locked`、`uv lock --check`、`pnpm lint/typecheck/test/build`、`pnpm check:secrets`、`pnpm check:capabilities`。
+- 依赖：T010（已完成）。
 
 #### T012：实现设置和密钥存储
 

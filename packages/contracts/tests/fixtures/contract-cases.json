@@ -1,0 +1,390 @@
+{
+  "$comment": "契约正反例的唯一来源（SPEC-M00 §5.3 第 7 条 / AC-4）。TS、Python、Rust 三方校验器读取同一个文件、对同一批实例给出判定，并各自把判定写入 tmp/contracts-verdicts/<lang>.json，由 pnpm test:contracts 比对三份结果是否逐条一致。新增用例时只需改这里；如果某一方的校验器与其它两方口径不同，会在这里直接暴露。",
+  "contractVersion": "v1",
+  "cases": [
+    {
+      "name": "envelope-success-minimal",
+      "schema": "envelope.schema.json",
+      "expect": "valid",
+      "why": "最小合法成功响应：data 为 null、citations 为空数组（无来源时必须显式给空数组）",
+      "instance": { "ok": true, "requestId": "req-1", "data": null, "citations": [] }
+    },
+    {
+      "name": "envelope-success-with-citation-and-usage",
+      "schema": "envelope.schema.json",
+      "expect": "valid",
+      "why": "带一条引用与 usage 的成功响应",
+      "instance": {
+        "ok": true,
+        "requestId": "req-2",
+        "data": { "answer": "示例" },
+        "citations": [
+          {
+            "sourceName": "Open dictionary fixture",
+            "sourceVersion": "2024.1",
+            "sourceLocator": "entry:example",
+            "licenseLabel": "CC-BY-4.0"
+          }
+        ],
+        "usage": { "inputTokens": 12, "outputTokens": 34, "cached": false }
+      }
+    },
+    {
+      "name": "envelope-success-object-data",
+      "schema": "envelope.schema.json",
+      "expect": "valid",
+      "why": "data 结构在 M00 不受约束（业务字段留给各模块 Spec）",
+      "instance": {
+        "ok": true,
+        "requestId": "req-3",
+        "data": { "nested": [1, 2, { "deep": true }] },
+        "citations": []
+      }
+    },
+    {
+      "name": "envelope-failure-minimal",
+      "schema": "envelope.schema.json",
+      "expect": "valid",
+      "why": "最小合法失败响应",
+      "instance": {
+        "ok": false,
+        "requestId": "req-4",
+        "error": {
+          "code": "ENGM.CONTRACT.SCHEMA_INVALID",
+          "message": "负载未通过校验",
+          "retryable": false
+        }
+      }
+    },
+    {
+      "name": "envelope-failure-with-details",
+      "schema": "envelope.schema.json",
+      "expect": "valid",
+      "why": "details 结构不受约束，但不允许它出现在成功形态里",
+      "instance": {
+        "ok": false,
+        "requestId": "req-5",
+        "error": {
+          "code": "ENGM.INTERNAL.UNEXPECTED",
+          "message": "内部错误",
+          "retryable": true,
+          "details": { "hint": "retry later" }
+        }
+      }
+    },
+    {
+      "name": "envelope-missing-requestId",
+      "schema": "envelope.schema.json",
+      "expect": "invalid",
+      "why": "缺 requestId：无法配对请求与响应",
+      "instance": { "ok": true, "data": null, "citations": [] }
+    },
+    {
+      "name": "envelope-empty-requestId",
+      "schema": "envelope.schema.json",
+      "expect": "invalid",
+      "why": "空字符串 requestId 等同于缺失",
+      "instance": { "ok": true, "requestId": "", "data": null, "citations": [] }
+    },
+    {
+      "name": "envelope-missing-citations",
+      "schema": "envelope.schema.json",
+      "expect": "invalid",
+      "why": "成功响应必须显式带 citations（空数组表示无来源）",
+      "instance": { "ok": true, "requestId": "req-6", "data": null }
+    },
+    {
+      "name": "envelope-unknown-error-code",
+      "schema": "envelope.schema.json",
+      "expect": "invalid",
+      "why": "形式合法但未注册的错误码必须被拒：防止各模块随手发明错误码",
+      "instance": {
+        "ok": false,
+        "requestId": "req-7",
+        "error": {
+          "code": "ENGM.CONTRACT.NOT_REGISTERED",
+          "message": "未注册的码",
+          "retryable": false
+        }
+      }
+    },
+    {
+      "name": "envelope-ok-true-with-error",
+      "schema": "envelope.schema.json",
+      "expect": "invalid",
+      "why": "ok 与负载不匹配：成功形态不得携带 error",
+      "instance": {
+        "ok": true,
+        "requestId": "req-8",
+        "error": {
+          "code": "ENGM.CONTRACT.INVALID_INPUT",
+          "message": "不该出现在成功形态里",
+          "retryable": false
+        }
+      }
+    },
+    {
+      "name": "envelope-ok-false-with-data",
+      "schema": "envelope.schema.json",
+      "expect": "invalid",
+      "why": "ok 与负载不匹配：失败形态不得携带 data",
+      "instance": {
+        "ok": false,
+        "requestId": "req-9",
+        "data": { "answer": "不该出现在失败形态里" },
+        "error": {
+          "code": "ENGM.CONTRACT.INVALID_INPUT",
+          "message": "错误",
+          "retryable": false
+        }
+      }
+    },
+    {
+      "name": "envelope-ok-not-boolean",
+      "schema": "envelope.schema.json",
+      "expect": "invalid",
+      "why": "ok 必须是布尔值，字符串 \"true\" 不算",
+      "instance": { "ok": "true", "requestId": "req-10", "data": null, "citations": [] }
+    },
+    {
+      "name": "envelope-extra-top-level-field",
+      "schema": "envelope.schema.json",
+      "expect": "invalid",
+      "why": "越界字段：信封是封闭的",
+      "instance": {
+        "ok": true,
+        "requestId": "req-11",
+        "data": null,
+        "citations": [],
+        "debug": "不该存在的字段"
+      }
+    },
+    {
+      "name": "envelope-citation-missing-license",
+      "schema": "envelope.schema.json",
+      "expect": "invalid",
+      "why": "引用必须带许可标识：许可未知的来源不得进入回答",
+      "instance": {
+        "ok": true,
+        "requestId": "req-12",
+        "data": null,
+        "citations": [
+          {
+            "sourceName": "x",
+            "sourceVersion": "1",
+            "sourceLocator": "p.1"
+          }
+        ]
+      }
+    },
+    {
+      "name": "envelope-citation-extra-field",
+      "schema": "envelope.schema.json",
+      "expect": "invalid",
+      "why": "引用结构封闭：不接受厂商专有字段（Q1 供应商无关）",
+      "instance": {
+        "ok": true,
+        "requestId": "req-13",
+        "data": null,
+        "citations": [
+          {
+            "sourceName": "x",
+            "sourceVersion": "1",
+            "sourceLocator": "p.1",
+            "licenseLabel": "CC-BY-4.0",
+            "oxfordEntryId": "vendor-specific"
+          }
+        ]
+      }
+    },
+    {
+      "name": "envelope-usage-negative-tokens",
+      "schema": "envelope.schema.json",
+      "expect": "invalid",
+      "why": "usage 的 token 数不得为负",
+      "instance": {
+        "ok": true,
+        "requestId": "req-14",
+        "data": null,
+        "citations": [],
+        "usage": { "inputTokens": -1, "outputTokens": 0, "cached": false }
+      }
+    },
+    {
+      "name": "envelope-usage-extra-field",
+      "schema": "envelope.schema.json",
+      "expect": "invalid",
+      "why": "usage 结构封闭，避免把用户正文塞进用量对象",
+      "instance": {
+        "ok": true,
+        "requestId": "req-15",
+        "data": null,
+        "citations": [],
+        "usage": { "inputTokens": 1, "outputTokens": 1, "cached": false, "prompt": "user text" }
+      }
+    },
+
+    {
+      "name": "error-valid",
+      "schema": "error.schema.json",
+      "expect": "valid",
+      "why": "独立错误对象（模块单独校验 error 负载时使用）",
+      "instance": {
+        "code": "ENGM.CONTRACT.VERSION_MISMATCH",
+        "message": "契约版本不一致",
+        "retryable": false
+      }
+    },
+    {
+      "name": "error-unknown-code",
+      "schema": "error.schema.json",
+      "expect": "invalid",
+      "why": "未注册错误码必须被拒（与 envelope 内联定义口径一致）",
+      "instance": {
+        "code": "ENGM.CONTRACT.NOT_REGISTERED",
+        "message": "未注册",
+        "retryable": false
+      }
+    },
+    {
+      "name": "error-missing-retryable",
+      "schema": "error.schema.json",
+      "expect": "invalid",
+      "why": "retryable 必填：缺省会导致调用方自行猜测重试策略",
+      "instance": { "code": "ENGM.CONTRACT.INVALID_INPUT", "message": "缺 retryable" }
+    },
+    {
+      "name": "error-empty-message",
+      "schema": "error.schema.json",
+      "expect": "invalid",
+      "why": "空说明无法用于排查",
+      "instance": { "code": "ENGM.CONTRACT.INVALID_INPUT", "message": "", "retryable": false }
+    },
+    {
+      "name": "error-extra-field",
+      "schema": "error.schema.json",
+      "expect": "invalid",
+      "why": "越界字段必须被拒",
+      "instance": {
+        "code": "ENGM.CONTRACT.INVALID_INPUT",
+        "message": "x",
+        "retryable": false,
+        "stack": "不该存在的字段"
+      }
+    },
+
+    {
+      "name": "citation-valid",
+      "schema": "citation.schema.json",
+      "expect": "valid",
+      "why": "独立引用对象",
+      "instance": {
+        "sourceName": "User upload: grammar-notes.pdf",
+        "sourceVersion": "unversioned",
+        "sourceLocator": "p.12 para.3",
+        "licenseLabel": "user-provided"
+      }
+    },
+    {
+      "name": "citation-missing-sourceVersion",
+      "schema": "citation.schema.json",
+      "expect": "invalid",
+      "why": "版本必须显式给出（无版本时写占位值），省略会让\"没有版本\"与\"忘了填\"无法区分",
+      "instance": {
+        "sourceName": "x",
+        "sourceLocator": "p.1",
+        "licenseLabel": "user-provided"
+      }
+    },
+
+    {
+      "name": "job-running",
+      "schema": "job.schema.json",
+      "expect": "valid",
+      "why": "进行中的长任务",
+      "instance": {
+        "jobId": "job-1",
+        "status": "running",
+        "progress": { "completed": 3, "total": 10, "message": "解析第 3/10 页" },
+        "cancelRequested": false
+      }
+    },
+    {
+      "name": "job-total-unknown",
+      "schema": "job.schema.json",
+      "expect": "valid",
+      "why": "total=0 表示总数未知，不是\"没有工作\"",
+      "instance": {
+        "jobId": "job-2",
+        "status": "pending",
+        "progress": { "completed": 0, "total": 0 },
+        "cancelRequested": false
+      }
+    },
+    {
+      "name": "job-unknown-status",
+      "schema": "job.schema.json",
+      "expect": "invalid",
+      "why": "状态枚举封闭：自行发明状态会让调用方无法可靠判断终态",
+      "instance": {
+        "jobId": "job-3",
+        "status": "done",
+        "progress": { "completed": 1, "total": 1 },
+        "cancelRequested": false
+      }
+    },
+    {
+      "name": "job-negative-progress",
+      "schema": "job.schema.json",
+      "expect": "invalid",
+      "why": "进度不得为负",
+      "instance": {
+        "jobId": "job-4",
+        "status": "running",
+        "progress": { "completed": -1, "total": 10 },
+        "cancelRequested": false
+      }
+    },
+    {
+      "name": "job-extra-field",
+      "schema": "job.schema.json",
+      "expect": "invalid",
+      "why": "越界字段必须被拒",
+      "instance": {
+        "jobId": "job-5",
+        "status": "running",
+        "progress": { "completed": 1, "total": 2 },
+        "cancelRequested": false,
+        "documentText": "不该出现在任务状态里的用户正文"
+      }
+    },
+
+    {
+      "name": "version-valid",
+      "schema": "version.schema.json",
+      "expect": "valid",
+      "why": "Sidecar 启动时上报的契约版本",
+      "instance": {
+        "contractVersion": "v1",
+        "schemaIds": [
+          "https://engmentor.local/contracts/v1/envelope.schema.json",
+          "https://engmentor.local/contracts/v1/error.schema.json"
+        ]
+      }
+    },
+    {
+      "name": "version-bad-pattern",
+      "schema": "version.schema.json",
+      "expect": "invalid",
+      "why": "版本必须以 v 开头（纯数字会让\"契约版本\"与其它版本号混淆）",
+      "instance": { "contractVersion": "1.0", "schemaIds": ["https://engmentor.local/contracts/v1/error.schema.json"] }
+    },
+    {
+      "name": "version-empty-schemaIds",
+      "schema": "version.schema.json",
+      "expect": "invalid",
+      "why": "清单不能为空：空清单无法用于比对嵌入完整性",
+      "instance": { "contractVersion": "v1", "schemaIds": [] }
+    }
+  ]
+}

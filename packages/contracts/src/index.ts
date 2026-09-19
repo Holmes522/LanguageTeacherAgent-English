@@ -1,10 +1,24 @@
 /**
- * 占位模块 —— T010-A 阶段。
+ * @engm/contracts —— 契约包的公开入口。
  *
- * 契约的唯一来源是 `schema/v1/*.schema.json`，该目录目前为空：业务 schema、
- * 生成脚本与生成物都属于 T011，本阶段只建立目录边界与"生成未启用"的显式状态。
+ * 生成物（`src/generated/`）不得手工编辑；它们是 `packages/contracts/scripts/generate.mjs`
+ * 的产物，漂移由 `pnpm contracts:check` 检出。
  *
- * 本文件故意不导出任何契约类型或校验函数 —— 一个看起来像契约的占位类型，
- * 比重命名一个空文件更容易误导后续开发。
+ * 这里只做两件事：再导出生成物，以及补一个纯派生的 TS 泛型别名。
+ * **不在这里手写任何契约定义**——那会构成 B-5 禁止的第二份契约来源。
  */
-export const CONTRACTS_GENERATION_ENABLED = false
+
+export * from './generated/v1'
+
+import type { LocalResponseFailure, LocalResponseSuccess } from './generated/v1/envelope'
+
+/**
+ * `LocalResponse<T>` 的 TypeScript 表达（SPEC-M00 §5.2）。
+ *
+ * 为什么需要这一行：JSON Schema 无法可移植地表达泛型，所以生成器只能把 `data` 生成为
+ * `unknown`。这个别名把 `data` 收窄为调用方指定的 T，其余部分完全来自生成物（`Omit` + 交叉类型，
+ * 没有任何独立定义）。失败形态不需要泛型参数：失败时没有业务负载。
+ */
+export type LocalResponseOf<T> =
+  | (Omit<LocalResponseSuccess, 'data'> & { readonly data: T })
+  | LocalResponseFailure

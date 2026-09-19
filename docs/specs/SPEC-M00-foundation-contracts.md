@@ -3,8 +3,8 @@
 | 字段 | 值 |
 |---|---|
 | 模块 ID | `M00-foundation-contracts` |
-| Spec 版本 | v1.3（新增 §8 CI 的落地契约与固定 SHA 记录，并记录 contracts job 的推迟） |
-| 状态 | v1.1 已复核通过；v1.2 为文档基线增补（AC-15～AC-18）；v1.3 为 §8 落地增补，验收标准未变 |
+| Spec 版本 | v1.4（记录 T011 实现的契约来源、生成链路与运行时校验） |
+| 状态 | v1.1 已复核通过；v1.2 增补文档基线（AC-15～AC-18）；v1.3 增补 §8 CI 落地；v1.4 为 T011 实现记录，验收标准未变 |
 | 日期 | 2026-09-19 |
 | 负责人 | ZCode（用户 Holmes 审阅） |
 | 依赖模块 | 无（M00 是所有模块的前置） |
@@ -193,6 +193,16 @@ LanguageTeacherAgent-English/
 
 M00 **不定义**业务命令字段（如 `dictionary.lookup` 的义项结构），只保证骨架与生成链路可用；业务字段由各模块 Spec 追加。
 
+**实现记录（T011）**：每份 schema 保持**自包含**，不使用跨文件 `$ref`。原因：TS（ajv）、Python（jsonschema）、
+Rust（jsonschema crate）三方都只编译单份文档，多文档引用解析正是三方最可能出现口径差异的地方——而三方一致性
+就是 AC-4 要保证的。`envelope.schema.json` 的 `$defs` 因此复刻了 `error.schema.json` 与 `citation.schema.json`
+的形状（各自带 `LocalResponse*` 前缀的 title，避免生成的类型名互相冲突）；这处重复由三方共享的正反例同时压
+两份文档来约束（`packages/contracts/tests/fixtures/contract-cases.json`）。
+
+`error-codes.json` 是错误码的**唯一来源**：`generate.mjs` 由它生成 TS 联合类型与 Python `Literal`，并在生成阶段
+断言注册表的码集合与 `error.schema.json`、`envelope.schema.json` 内联的 `enum` 三者完全一致——这类不一致没有
+任何单一校验器能发现，只能在生成阶段拦住。
+
 ### 5.3 Rust 运行时 JSON Schema 校验
 
 TS 与 Python 侧由生成类型 + 校验库保证，Rust 侧不做类型生成，改为**运行时按同一份 Schema 校验**，保证三条链路的口径一致。
@@ -209,7 +219,8 @@ TS 与 Python 侧由生成类型 + 校验库保证，Rust 侧不做类型生成�
 **实现要求：**
 
 1. Schema 以 `include_str!` 在构建期嵌入 Rust 二进制，不复制文件内容，不在运行时读取仓库路径。
-2. 使用支持 JSON Schema Draft 2020-12 的校验库（计划 `jsonschema` crate；具体版本在 T011 依官方文档实测后写入 `Cargo.toml` 并由 `Cargo.lock` 固定）。
+2. 使用支持 JSON Schema Draft 2020-12 的校验库：**`jsonschema` crate `0.56.0`**，写入 `Cargo.toml` 并由 `Cargo.lock` 固定。
+   **必须 `default-features = false`**：该 crate 的默认特性含 `resolve-http`（引入 `reqwest`/`rustls`）与 `resolve-file`，会让运行时 schema 解析具备联网与读盘能力——与「schema 由 include_str! 嵌入、运行时不读路径」直接冲突，也扩大攻击面。M00 只有单文档 schema，无需多文档解析。
 3. 编译后的校验器在首次使用时构建一次并缓存（`std::sync::OnceLock`），避免每次请求重复编译。
 4. 校验失败返回 `ENGM.CONTRACT.SCHEMA_INVALID`，**不 panic、不静默透传**；错误详情只包含 schema `$id`、实例路径与失败关键字，**不得**包含用户正文。
 5. 契约版本协商：Sidecar 启动时按 `version.schema.json` 上报契约版本；主进程与 Sidecar 版本不一致时返回 `ENGM.CONTRACT.VERSION_MISMATCH` 并拒绝服务，而不是继续运行。
@@ -279,8 +290,8 @@ B-4 不依赖单一机制，三层各自独立可测、任一失效仍不放开�
 | 安装（Node） | `pnpm install --frozen-lockfile` | 根 + workspace |
 | 安装（Python） | `uv sync --locked --project services/ai-core` | Python 环境 + 契约包 |
 | 锁文件一致性 | `uv lock --check --project services/ai-core` | 断言 `uv.lock` 与 `pyproject.toml` 一致 |
-| 契约生成 | `pnpm contracts:generate` | TS + Python 生成物 + `schema-manifest.json` |
-| 契约漂移检查 | `pnpm contracts:check` | 生成物与 schema 一致；非 0 表示漂移 |
+| 契约生成 | `pnpm contracts:generate` | TS + Python 生成物 + `schema-manifest.json`（**T011 已落地**） |
+| 契约漂移检查 | `pnpm contracts:check` | 两段式：先断言生成物相对 git 干净，再重新生成并断言仍干净。**顺序不可颠倒**——先重新生成会覆盖手工编辑的证据，使检查对该情况失效（实测发现）。**T011 已落地** |
 | Lint | `pnpm lint` | = `lint:web` + `lint:py` + `lint:rust` |
 | | `pnpm lint:web` | ESLint（`apps/desktop/src`、`packages/contracts/src`） |
 | | `pnpm lint:py` | `cd services/ai-core && uv run ruff check .` |
@@ -292,7 +303,7 @@ B-4 不依赖单一机制，三层各自独立可测、任一失效仍不放开�
 | | `pnpm test:web` | Vitest（含契约 TS 侧正反例） |
 | | `pnpm test:py` | `cd services/ai-core && uv run pytest`（含契约 Python 侧正反例） |
 | | `test:rust` | `cargo test --locked`（含 Rust 运行时 Schema 校验与 manifest 一致性） |
-| | `pnpm test:contracts` | 三方一致性：同一 fixtures 集合的 TS / Python / Rust 结论比对 |
+| | `pnpm test:contracts` | 三方各自把判定写入 `tmp/contracts-verdicts/<lang>.json`，再由 `scripts/contracts-consistency.mjs` **逐条比对**（不是三方各自对着期望值断言——那样三份期望值可能被一起改错）。**T011 已落地**，32 条用例一致 |
 | Build | `pnpm build` | Web 静态构建 + Tauri 骨架构建 |
 | 安全自检 | `pnpm check:secrets` | 两段：敏感路径忽略规则（`scripts/check-ignored.mjs`）+ 与 CI 同版本的 gitleaks 全量历史扫描，同一 `.gitleaks.toml` |
 | 边界自检 | `pnpm check:capabilities` | 输出 Tauri capability 授权清单、capability 文件、Cargo 依赖与前端插件，并与白名单比对 |
@@ -333,11 +344,12 @@ B-4 不依赖单一机制，三层各自独立可测、任一失效仍不放开�
 | `python` | `uv sync --locked` → `uv lock --check` → `uv run ruff check .` → `uv run mypy` → `uv run pytest`（全部在 `services/ai-core` 下执行） | 是 |
 | `rust` | `pnpm build:web` → `pnpm lint:rust`（fmt + clippy）→ `cargo test --locked` → `pnpm build:rust` | 是 |
 | `secrets` | `node scripts/check-ignored.mjs` → gitleaks 全量历史扫描 | 是 |
-| `contracts` | **推迟到 T011**：本 job 需要 `pnpm contracts:generate` 与 `pnpm test:contracts`，两者都是 T011 的交付物 | 是（T011 起） |
+| `contracts` | `pnpm install` → `uv sync --locked` → `pnpm contracts:generate` → `git diff --exit-code --stat`（漂移即失败）→ `pnpm test:contracts` | 是（**T011 已落地**） |
 
-`contracts` job 推迟的后果必须明说：**在 T011 之前，CI 不检查契约漂移**。`packages/contracts` 当前是空壳
-（只有目录、README 与占位模块，没有任何 schema 或生成物），因此这一空档此刻不构成实际风险；但它是一个
-有明确到期日的缺口，T011 必须补齐，且不得在补齐前把 M00 的契约相关验收项标记为通过。
+`contracts` job 的到期日已在 T011 兑现：该 job 现已落入 `ci.yml`，契约漂移与三方一致性从 T011 起都有真实门禁。
+它需要 pnpm、uv（运行 `datamodel-code-generator`）与 Rust（三方一致性里的 Rust 一方）三种工具，缓存配置与
+`rust` job 一致。**该 job 与其余四个 job 一样从未在 GitHub 上运行过**——工作流已推送到分支，但无 PR、未推
+`main`，Actions 未被触发。
 
 ### 8.1 三方 Action 的固定 SHA 记录
 
@@ -490,6 +502,7 @@ ENGM_EMBEDDING_MODEL=BAAI/bge-small-en-v1.5
 
 | 日期 | 版本 | 变更 | 作者 |
 |---|---|---|---|
+| 2026-09-19 | v1.4 | T011 实现记录：§5.2 补自包含 schema 的理由与错误码唯一来源的断言方式；§5.3 第 2 条固定 `jsonschema` 0.56.0 并说明必须关闭默认特性；§7 的 `contracts:generate` / `contracts:check` / `test:contracts` 标记为已落地并记录两段式检查的顺序约束；§8 的 `contracts` job 由推迟改为已落地（并注明仍未在 GitHub 上运行过） | ZCode |
 | 2026-09-19 | v1.3 | T010-B 落地增补：§8 增补 `workflow_dispatch` 触发（及理由）、四个可运行 job 的实际步骤、新增 §8.1 六条 Action 的固定 SHA 记录与升级要求、gitleaks 固定 `8.30.1` 与许可证说明（个人账号免费/组织需密钥）、忽略规则与密钥扫描拆为两步、实测的扫描能力边界；明确 `contracts` job 推迟到 T011 及其后果（T011 前 CI 不检查契约漂移）；§7 补两个自检命令的落地状态与覆盖范围 | ZCode |
 | 2026-09-19 | v1.2 | 新增 README 文档基线：`README.md` 纳入 M00 交付物与验收（AC-15 内部链接无断链、AC-16 状态与 `PROJECT_STATUS.md` 一致、AC-17 无虚构内容、AC-18 用户使用指南结构与发布门禁）；目录结构与实施顺序同步补充 README | ZCode |
 | 2026-09-19 | v1.1 | 按用户审阅结论修订：uv 命令 `--frozen` → `--locked`/`uv lock --check`；新增 §5.3 Rust 运行时 Schema 校验；Python 生成物改为可安装包 `engm-contracts`（禁止 PYTHONPATH）；新增 §5.4 WebView 无外网三层防护；§3.2 预检加入 MSVC/WebView2 与 §3.3 VBSCRIPT；落定 D-1～D-6；补 AC-7～AC-12；清理行尾空格 | ZCode |

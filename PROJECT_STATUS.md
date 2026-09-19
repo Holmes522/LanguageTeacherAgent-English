@@ -37,13 +37,13 @@
 | 字段 | 当前值 |
 |---|---|
 | Agent/负责人 | ZCode（用户 Holmes 授权） |
-| 当前任务 | `T010`（Monorepo 骨架、可复现安装边界与最小 CI）**已完成并在本机验证**：`T010-A`（骨架 / lockfile / 质量命令）+ `T010-B`（CI 工作流 + 两个安全自检脚本）。**CI 尚未在 GitHub 上运行过**（无 PR、不推 `main`、Actions 未触发）。`T011`（版本化本地契约）待做 |
-| 当前模块 | `M00-foundation-contracts`（T010 完成；T011/T012 未开始） |
+| 当前任务 | `T011`（版本化本地契约）**已完成并在本机验证**：6 个 schema、生成链路、可安装 Python 契约包、Rust 运行时校验、32 条三方一致性用例、CI 的 `contracts` job。**CI 仍未在 GitHub 上运行过**（无 PR、不推 `main`、Actions 未触发）。`T012`（设置与密钥存储）待做 |
+| 当前模块 | `M00-foundation-contracts`（T010、T011 完成；T012 未开始） |
 | 分支 | `feat/M00-foundation-contracts`（基于 `origin/main` @ `ddd16be`） |
-| 状态 | `IN_PROGRESS`；骨架、三个 lockfile、质量命令与两个自检脚本全部本机 exit 0；CI 工作流已推送但从未运行 |
+| 状态 | `IN_PROGRESS`；T011 的 15 项验证命令全部本机 exit 0（含契约漂移可检出、三方一致性 32/32）；CI 工作流已推送但从未运行 |
 | 开始时间 | 2026-09-19 |
 | 计划修改文件 | `package.json`、`pnpm-workspace.yaml`、`.npmrc`、`.gitattributes`、`.env.example`、`.gitleaks.toml`、`eslint.config.mjs`、`.github/workflows/ci.yml`、`apps/desktop/**`、`packages/contracts/**`、`services/ai-core/**`、`scripts/{contracts-check,check-ignored,check-secrets,audit-capabilities}.mjs`、`README.md`、`PROJECT_STATUS.md`、`tasks/todo.md` |
-| 下一检查点 | 在 GitHub 上实跑一次 CI（Actions 页 `workflow_dispatch` 手动触发，或开 PR）→ 授权 `T011`（契约 schema、生成链路，并补齐 CI 的 `contracts` job） |
+| 下一检查点 | 在 GitHub 上实跑一次 CI（Actions 页 `workflow_dispatch`，此时有 5 个 job，含新的 `contracts`）→ 授权 `T012`（设置与密钥存储） |
 
 **执行顺序（2026-09-19 用户裁定，替代此前冲突描述）**：工具链预检与安装（T010 的第一步）→ `M00（T010–T012）` → `T001–T005` 风险 Spike → `Checkpoint A` → Phase 1 及之后的业务模块。M00 不再排在 Spike 之后。
 
@@ -53,7 +53,7 @@
 
 | 模块 ID | 模块 | 优先级 | 状态 | 最后验证 | 证据/PR | 下一步 |
 |---|---|:---:|---|---|---|---|
-| `M00-foundation-contracts` | Monorepo、契约、CI、ADR 与规则 | P0 | IN_PROGRESS | 2026-09-19 T010 完成：骨架与三个 lockfile 就绪，质量命令 + 两个安全自检脚本全部 exit 0；**CI 工作流未在 GitHub 上运行过** | [`SPEC-M00`](docs/specs/SPEC-M00-foundation-contracts.md)、`.github/workflows/ci.yml`、`apps/`、`packages/`、`services/`、`scripts/` | 在 GitHub 上实跑 CI → T011（契约 + `contracts` job）→ T012（设置与密钥）（**先于** T001–T005 Spike） |
+| `M00-foundation-contracts` | Monorepo、契约、CI、ADR 与规则 | P0 | IN_PROGRESS | 2026-09-19 T011 完成：v1 契约 + 生成链路 + Rust 运行时校验 + 三方一致性 32/32 + `contracts` job；15 项验证命令 exit 0；**CI 工作流未在 GitHub 上运行过** | [`SPEC-M00`](docs/specs/SPEC-M00-foundation-contracts.md) v1.4、`packages/contracts/**`、`apps/desktop/src-tauri/src/contracts.rs`、`.github/workflows/ci.yml` | 在 GitHub 上实跑 CI（5 个 job）→ T012（设置与密钥）（**先于** T001–T005 Spike） |
 | `M01-desktop-shell` | Tauri 桌面壳、Sidecar、安装更新 | P0 | NOT_STARTED | — | — | Sidecar Spike |
 | `M02-local-storage-settings` | SQLite、迁移、设置、密钥 | P0 | NOT_STARTED | — | — | 等待 M00/M01 |
 | `M03-llm-gateway` | DeepSeek、流式、结构化输出、预算 | P0 | NOT_STARTED | — | — | DeepSeek Spike |
@@ -118,7 +118,7 @@
 - 源码：已创建（T010-A 空骨架；`apps/desktop`、`packages/contracts`、`services/ai-core`、`scripts/`）。
 - 测试：已创建（T010-A：vitest + pytest + cargo test；T010-B 前另有 Pester 53 项）。
 - CI：工作流已创建并推送（T010-B，`.github/workflows/ci.yml`），但**从未在 GitHub 上运行过**——无 PR、未推 `main`、Actions 未被触发。
-- 已就绪的 Spec：[`docs/specs/SPEC-M00-foundation-contracts.md`](docs/specs/SPEC-M00-foundation-contracts.md)（**v1.3**；v1.1 已复核通过，v1.2 增补 README 文档基线验收项 AC-15～AC-18，v1.3 增补 §8 CI 落地契约、§8.1 固定 SHA 记录与 `contracts` job 的推迟）。
+- 已就绪的 Spec：[`docs/specs/SPEC-M00-foundation-contracts.md`](docs/specs/SPEC-M00-foundation-contracts.md)（**v1.4**；v1.1 已复核通过，v1.2 增补 README 文档基线 AC-15～AC-18，v1.3 增补 §8 CI 落地契约与 §8.1 固定 SHA，v1.4 记录 T011 的契约来源、生成链路与运行时校验）。
 - 文档基线：[`README.md`](README.md) 已建立（Living README，Pre-alpha 状态如实声明，用户使用指南按 10 个固定小节预留为"待实现"占位，不含未实现命令、虚构截图或下载地址）。维护规则见 [`AGENTS.md`](AGENTS.md)「README 维护规则」：README 与实际产品不一致时模块不得标记 `DONE`。
 - 本机工具链（2026-09-19 已安装并固定版本）：
   - Git `2.51.0.windows.1`（`core.autocrlf` 生效，工作区 CRLF/仓库 LF，待 `.gitattributes` 统一）；Node `v22.20.0`（已写入 `.node-version`）；npm `10.9.3`（仅引导）；Corepack `0.34.0`；winget `v1.29.290`；WebView2 Runtime `153.0.4234.32`。
@@ -162,7 +162,7 @@
 - 规模约束（本轮刻意不做）：无查词/语法/评分/RAG/导入/题库、无真实 API 调用、无密钥存储、无安装包、未启用 `bundle.active`、CI 的 `contracts` job（T011）、无 macOS 矩阵（P1）。
 - 待办提示：`winget list` 未把 Build Tools 2022 列为已安装包（不在其 ARP 记录中），因此后续升级/卸载应走 Visual Studio Installer 而不是 winget。
 - 已有规划文档：统一方案、实施计划、任务清单和两份历史方案。
-- 未授权事项（勿自行执行）：分支保护、PR 创建、`gh` CLI 安装与认证、**触发 Actions 运行**、安装依赖与生成脚手架（须在 M00 Spec 获批后）。注意：CI 工作流本身已按用户 2026-09-19 的指示提交入库，但"让它在 GitHub 上真的跑一次"属于上表未授权范围，需用户操作或在 Actions 页手动触发。
+- 未授权事项（勿自行执行）：分支保护、PR 创建、`gh` CLI 安装与认证、**触发 Actions 运行**。注意：CI 工作流本身已按用户 2026-09-19 的指示提交入库（现为 5 个 job），但"让它在 GitHub 上真的跑一次"属于未授权范围，需用户操作或在 Actions 页手动触发。
 
 ## 9. 发现的冲突
 
@@ -215,6 +215,62 @@
 ```
 
 ## 11. 交接记录
+### 2026-09-19 — T011：版本化本地契约与三方一致性（DONE；CI 仍未在 GitHub 上运行）
+
+- Agent/负责人：ZCode（用户授权 T011）
+- 状态：DONE（本机可验证部分全部通过）；**唯一未完成项：CI 的 `contracts` job 未在 GitHub 上真实跑通**
+- 分支：`feat/M00-foundation-contracts`
+- Commit/PR：本分支提交；未创建 PR，未 push `main`，未 force push
+- 完成内容：
+  1. **6 个契约来源**（`packages/contracts/schema/v1/`，JSON Schema 2020-12）：`envelope.schema.json`（成功/失败两形态，requestId/citations/usage）、`error.schema.json`、`error-codes.json`（注册表，M00 固化 4 个码）、`job.schema.json`（jobId/状态枚举/进度/取消）、`citation.schema.json`（供应商无关四字段）、`version.schema.json`（版本协商）。**不含任何业务命令字段**。
+  2. **生成链路**（D-2 已批准工具，未更换）：`json-schema-to-typescript` 16.0.0 → `src/generated/v1/*.ts`；`datamodel-code-generator` 0.82.0 → `python/src/engm_contracts/v1/*.py`（Pydantic v2）；另生成 `schema-manifest.json`（6 条，含 SHA-256）。入口 `packages/contracts/scripts/generate.mjs`；生成物只由脚本写。
+  3. **可安装的 Python 契约包**：`packages/contracts/python/pyproject.toml`（name `engm-contracts`，导入名 `engm_contracts`，不发布），由 `services/ai-core` 以 `[tool.uv.sources]` path 依赖 editable 消费。无 `PYTHONPATH` / `sys.path.append` / `conftest.py` / 复制生成物等技巧；`uv sync --locked` 后 `from engm_contracts.v1 import ...` 直接可用。
+  4. **Rust 运行时校验**（`apps/desktop/src-tauri/src/contracts.rs`）：`jsonschema` crate 0.56.0（**`default-features = false`**）、`include_str!` 构建期嵌入、`OnceLock` 首次使用构建一次并缓存；四条边界（WebView→Rust / Rust→WebView / Rust→Sidecar / Sidecar→Rust）双向覆盖；失败返回 `ENGM.CONTRACT.SCHEMA_INVALID`（不 panic、不静默透传），详情只含 schema `$id`、边界名、实例路径与失败关键字；版本不一致返回 `ENGM.CONTRACT.VERSION_MISMATCH` 并拒绝服务；`schema-manifest.json` 的嵌入一致性由 SHA-256 断言（AC-8）。
+  5. **三方一致性**：`packages/contracts/tests/fixtures/contract-cases.json` 是正反例的唯一来源，**32 条**用例被 TS（ajv 8.20.0）、Python（jsonschema 4.26.0）、Rust（jsonschema crate）分别判定；三方各自把判定写入 `tmp/contracts-verdicts/<lang>.json`，再由 `scripts/contracts-consistency.mjs` **逐条比对**。实测 32/32 三方完全一致。
+  6. **`pnpm contracts:check` 改为真正的漂移检查**（原 T010-A 的"生成未启用"检查按其自身约定退役并删除）：两段式——先断言生成物路径相对 git 干净，**再**重新生成并断言仍干净。
+  7. **CI 的 `contracts` job 补齐**（T010-B 推迟的到期项）：`ci.yml` 现为 5 个 job；新 job 走 `pnpm install` → `uv sync --locked` → `pnpm contracts:generate` → `git diff --exit-code --stat` → `pnpm test:contracts`，Action SHA 全部沿用 §8.1 已记录值，另加 `Swatinem/rust-cache`（三方一致性的 Rust 一方需要编译）。
+  8. 新增根级脚本：`contracts:generate`、`contracts:check`（改指向契约包）、`test:contracts`；`test:web` 纳入契约包的 vitest，`test:py` 纳入契约 Python 侧用例（pytest `testpaths` 增加契约测试目录）。
+  9. 文档同步：SPEC-M00 → v1.4、`tasks/todo.md`、`README.md`、本文件。
+- 未完成内容：
+  - **CI 未在 GitHub 上运行过**（与 T010-B 相同）。`ci.yml` 现在有 5 个 job，但仓库无 PR、未推 `main`、Actions 未被触发，因此 YAML 在真实 runner 上的行为、新 `contracts` job 的三工具链（pnpm/uv/Rust）能否跑通**都没有证据**。不得记为已验证。
+  - T012（设置与密钥存储）未开始。
+- 关键文件：`packages/contracts/schema/v1/*`、`packages/contracts/scripts/{generate,check-drift}.mjs`、`packages/contracts/src/generated/v1/*`、`packages/contracts/python/**`、`packages/contracts/tests/**`、`packages/contracts/schema-manifest.json`、`scripts/contracts-consistency.mjs`、`apps/desktop/src-tauri/src/contracts.rs`、`.github/workflows/ci.yml`、`services/ai-core/pyproject.toml`、`package.json`
+- 接口/Schema 变化：**新增 v1 契约**（信封、错误、错误码、Job、Citation、版本）。信封为闭合结构（`additionalProperties: false`）：成功必须带 `data` 且不得带 `error`，失败反之；`citations` 必填（无来源时显式空数组）；错误码必须是注册表内的值，形式合法但未注册的码也会被拒。**业务命令字段仍未定义**（留给各模块 Spec）。
+- 数据迁移：无
+- ADR/决策：无新增 ADR。三项实现决策已写入 SPEC-M00 v1.4 而非 ADR，因为都在已批准的 §5.2/§5.3 范围内：schema 自包含（不用跨文件 `$ref`）、`jsonschema` crate 关闭默认特性、漂移检查的两段式顺序。
+- 验证命令与结果（全部真实退出码，本机执行）：
+  - `scripts/preflight.ps1 -RequireReady -NoJson -Quiet` → **0**
+  - `pnpm install --frozen-lockfile` → **0**
+  - `uv sync --locked --project services/ai-core` → **0**
+  - `uv lock --check --project services/ai-core` → **0**
+  - `cargo build --locked` → **0**
+  - `pnpm contracts:generate` → **0**
+  - `pnpm contracts:check`（生成物与 schema 同步）→ **0**；**手工在 `src/generated/v1/envelope.ts` 追加一行后 → 1**（并打印出该文件的 diff），重新生成后回到 0
+  - `pnpm test:contracts` → **0**（32 条用例，TS/Python/Rust 判定逐条一致）
+  - `pnpm lint` → **0**（eslint + ruff + cargo fmt/clippy）
+  - `pnpm typecheck` → **0**（tsc×2 + mypy `--strict`，含生成物）
+  - `pnpm test` → **0**（vitest：desktop 75 + contracts 34；pytest 38；cargo test 13）
+  - `pnpm build` → **0**
+  - `pnpm check:secrets` → **0**；`pnpm check:capabilities` → **0**（均未放宽）
+  - `git diff --check` → **0**；Markdown 相对链接 → 19 个文件、31 条、**0 断链**；密钥扫描暂存内容 → 0 命中
+- 过程中发现并修正的问题（均为实测，不是推断）：
+  1. **`pnpm contracts:check` 的第一版对"手工改生成物"完全失效**：它先重新生成再 `git diff`，而重新生成会把手工编辑覆盖回正确内容，于是误报"无漂移"。已改为两段式（先断言再生成），并复测两种情形。
+  2. env 生成的 TS 中 `data` 被推断成 `{ [k: string]: unknown }`：因为 schema 里该字段只有 `description`。这会让类型拒绝 `data: null`，而 JSON Schema 校验接受它——**类型与校验口径不一致**。已把 `data` 改为布尔 schema `true`（任意 JSON 值）。
+  3. `envelope` 内联形状与独立 schema 的生成类型**同名冲突**（`Citation`/`ContractError` 在两个模块各出现一次，`export *` 会报重复导出）。已给内联形状加 `LocalResponse*` 前缀 title。
+  4. 生成的 Python 用 `constr()`/`conint()` 当类型注解，`mypy --strict` 报 22 个 `Invalid type comment or annotation`。已给 datamodel-codegen 加 `--field-constraints --use-annotated`，产出 `Annotated[..., Field(...)]`——**修生成器而不是给生成物开豁免**，最终 0 error。
+  5. 测试里逐个用例调用 `ajv.compile` 会被 ajv 以"$id 已存在"抛错（每个 schema 首条通过、其余全失败，看起来像契约有问题）。已加校验器缓存。
+  6. `clippy -D warnings` 因 `contracts` 模块在二进制目标里没有调用方而报 dead_code：M00 刻意不注册任何 Tauri command。已在 `main.rs` 的 `mod contracts;` 上加**带移除条件**的 `#[allow(dead_code)]`（首个 IPC 命令落地后必须删除），并对错误码常量加了注册表一致性测试让其被真实使用。
+  7. 生成器里两处**我自己的错误**：模板字符串中多余的 `\"` 转义（eslint `no-useless-escape`）；生成物横幅里不必要的 `/* eslint-disable */`（eslint 报"未使用的禁用指令"）。都已修掉而不是压掉警告。
+- 已知问题与风险：
+  - **CI 未被远程验证**（最重要的一条）。
+  - 三方一致性比较的是**schema 级判定**，不是生成的类型。Pydantic 模型另有冒烟测试（能导入、能对合法信封建模），但没有逐条对齐 32 条 fixture——若 Pydantic 的解释与 schema 在某些边界上不同，现有测试不覆盖。已知的具体差异面：Pydantic 的 `extra='forbid'` 与 `additionalProperties: false` 语义接近但不等价于校验器。
+  - Rust 侧四条边界目前**共用同一信封 schema**：M00 不定义业务命令字段（§5.2），因此请求侧没有独立 schema。各业务模块（M03+）追加请求 schema 时需要在这里按边界分流。
+  - `contracts:check` 依赖工作树干净：如果生成物路径本来就有未提交改动，它会如实报为漂移（无法区分"手工改了"与"还没提交"）。这是刻意设计，已写进脚本注释。
+  - 新增依赖：`ajv` 8.20.0、`json-schema-to-typescript` 16.0.0（契约包 dev）、`jsonschema`（Python dev，判定用）、`jsonschema` 0.56.0 + `sha2` 0.10（Rust；`sha2` 仅在 dev-dependencies，不进发布二进制）。均为已批准工具链或 Spec 明确要求的能力，不是业务依赖。
+- 环境或密钥要求：无需任何密钥；未创建 `.env`。
+- 下一个 Agent 应先做：
+  1. **让用户在 Actions 页面手动触发一次 CI**（`workflow_dispatch`），确认 **5 个 job** 在真实 runner 上通过；`contracts` job 需要 pnpm + uv + Rust 三套工具，是最可能出问题的一个。
+  2. 之后执行 **T012**（设置与密钥存储骨架），再进入 Phase 0 的 T001–T005 Spike。
 ### 2026-09-19 — T010-B：GitHub Actions 最小 CI 与安全自检（DONE；CI 尚未在 GitHub 上运行）
 
 - Agent/负责人：ZCode（用户 Holmes 授权 T010-B）

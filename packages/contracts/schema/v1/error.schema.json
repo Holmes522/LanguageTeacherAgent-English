@@ -1,0 +1,34 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://engmentor.local/contracts/v1/error.schema.json",
+  "title": "ContractError",
+  "description": "统一错误对象（SPEC-M00 §5.2 / B-6）。code 必须是 error-codes.json 注册过的值：未注册但形式合法的码也会被拒绝，这是刻意设计（避免各模块随手发明错误码）。details 是任意附加信息，但不得包含用户正文。",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["code", "message", "retryable"],
+  "properties": {
+    "code": {
+      "type": "string",
+      "description": "已注册的错误码。取值集合与 error-codes.json 的 codes 键完全一致。",
+      "enum": [
+        "ENGM.CONTRACT.INVALID_INPUT",
+        "ENGM.CONTRACT.SCHEMA_INVALID",
+        "ENGM.CONTRACT.VERSION_MISMATCH",
+        "ENGM.INTERNAL.UNEXPECTED"
+      ]
+    },
+    "message": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 500,
+      "description": "给人看的说明。不得回显用户正文或密钥。"
+    },
+    "retryable": {
+      "type": "boolean",
+      "description": "调用方是否可以原样重试。业务校验失败一律为 false，避免无限自修复。"
+    },
+    "details": {
+      "description": "附加诊断信息。结构由产生方决定，但不得包含用户正文、完整提示词或凭据。"
+    }
+  }
+}

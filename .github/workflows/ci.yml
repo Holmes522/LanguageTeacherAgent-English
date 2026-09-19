@@ -4,9 +4,9 @@
 # 接管后重新指向恶意提交；固定 SHA 让"上游变了"变成一次显式的、可评审的改动。
 # 每条 uses 后面的注释标出该 SHA 对应的 tag 与来源仓库，便于人工核对与升级。
 #
-# 为什么没有 contracts job：该 job 需要 pnpm contracts:generate 与 pnpm test:contracts，
-# 两者都是 T011 的交付物（packages/contracts 目前是空壳）。本轮只落能真实跑起来的 job，
-# 不放一个永远跑不通的占位 job。契约漂移检查随 T011 一起加进来。
+# contracts job（T011 补齐）：它需要 pnpm contracts:generate 与 pnpm test:contracts，
+# 两者在 T011 之前不存在，因此 T010-B 明确把该 job 推迟到 T011。
+# 从 T011 起，契约漂移与三方一致性都在 CI 里有真实门禁。
 
 name: CI
 
@@ -148,6 +148,55 @@ jobs:
 
       - name: Tauri 骨架构建
         run: pnpm build:rust
+
+  contracts:
+    name: contracts (drift / three-way consistency)
+    runs-on: windows-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          # 漂移检查用 git diff 判断，需要完整工作树但不改远端，凭据也不需要留下。
+          persist-credentials: false
+
+      - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
+        with:
+          version: ${{ env.PNPM_VERSION }}
+
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version-file: .node-version
+          cache: pnpm
+
+      # Python 侧生成器（datamodel-code-generator）由 uv 以 uvx 方式运行，版本写在
+      # packages/contracts/scripts/generate.mjs 里，不由 runner 的 Python 环境决定。
+      - uses: astral-sh/setup-uv@c771a70e6277c0a99b617c7a806ffedaca235ff9 # v9.0.0
+        with:
+          version: ${{ env.UV_VERSION }}
+          enable-cache: true
+          cache-dependency-glob: services/ai-core/uv.lock
+
+      # 三方一致性里的 Rust 一方需要编译，缓存与 rust job 用同一套配置。
+      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
+        with:
+          workspaces: apps/desktop/src-tauri
+
+      - name: 安装 Node 依赖
+        run: pnpm install --frozen-lockfile
+
+      - name: 安装 Python 依赖（locked）
+        run: uv sync --locked --project services/ai-core
+
+      - name: 重新生成契约产物
+        run: pnpm contracts:generate
+
+      - name: 断言生成物与 schema 同步（漂移即失败）
+        # 这里刻意用 git diff --exit-code 而不是 contracts:check：contracts:check 自己会先
+        # 重新生成再比对，等于把上面的步骤重跑一遍；CI 里要的是"生成后的工作树必须干净"。
+        run: git diff --exit-code --stat -- packages/contracts/src/generated packages/contracts/python/src/engm_contracts packages/contracts/schema-manifest.json
+
+      - name: 三方一致性（TS / Python / Rust 判定必须逐条相同）
+        run: pnpm test:contracts
 
   secrets:
     name: secrets (gitleaks / 忽略规则)

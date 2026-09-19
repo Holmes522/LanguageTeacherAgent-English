@@ -10,7 +10,8 @@
   "scripts": {
     "preflight": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/preflight.ps1",
     "preflight:gate": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/preflight.ps1 -RequireReady",
-    "contracts:check": "node scripts/contracts-check.mjs",
+    "contracts:generate": "pnpm --filter @engm/contracts run generate",
+    "contracts:check": "pnpm --filter @engm/contracts run check",
     "check:ignored": "node scripts/check-ignored.mjs",
     "check:secrets": "pnpm run check:ignored && node scripts/check-secrets.mjs",
     "check:capabilities": "node scripts/audit-capabilities.mjs",
@@ -22,9 +23,10 @@
     "typecheck:web": "pnpm --filter @engm/desktop run typecheck && pnpm --filter @engm/contracts run typecheck",
     "typecheck:py": "cd services/ai-core && uv run mypy",
     "test": "pnpm run test:web && pnpm run test:py && pnpm run test:rust",
-    "test:web": "pnpm --filter @engm/desktop run test",
+    "test:web": "pnpm --filter @engm/desktop run test && pnpm --filter @engm/contracts run test",
     "test:py": "cd services/ai-core && uv run pytest",
     "test:rust": "pnpm run build:web && cargo test --manifest-path apps/desktop/src-tauri/Cargo.toml --locked",
+    "test:contracts": "node scripts/contracts-consistency.mjs",
     "build": "pnpm run build:web && pnpm run build:rust",
     "build:web": "pnpm --filter @engm/desktop run build",
     "build:rust": "cargo build --manifest-path apps/desktop/src-tauri/Cargo.toml --locked"

@@ -220,7 +220,9 @@ pnpm lint          # eslint + ruff + cargo fmt/clippy
 pnpm typecheck     # tsc + mypy(strict)
 pnpm test          # vitest + pytest + cargo test
 pnpm build         # 前端构建 + Rust 骨架构建
-pnpm contracts:check   # 契约目录结构与"生成尚未启用"状态
+pnpm contracts:generate   # 从 schema 生成 TS/Python 类型与 schema-manifest.json
+pnpm contracts:check      # 漂移检查（无漂移 0；生成物与 schema 不同步则非 0）
+pnpm test:contracts       # 三方一致性：TS/Python/Rust 对同一批正反例的判定必须逐条相同
 ```
 
 关于前端产物与 Rust 的顺序：Tauri 通过 `tauri::generate_context!` 在**编译期嵌入前端产物**。
@@ -255,7 +257,6 @@ winget install --id Gitleaks.Gitleaks --version 8.30.1 -e
 
 | 目的 | 状态 |
 |---|---|
-| 生成并校验契约生成物 | 待 T011 完成后补充 |
 | 启动桌面应用（开发模式） | 待 M01 完成后补充 |
 | 打包 Windows 安装包 / 签名 | 待 T050 完成后补充 |
 | CI 流程（GitHub Actions） | **工作流已提交，但从未在 GitHub 上运行过**；要验证需在 Actions 页面手动触发（`workflow_dispatch`）或开 PR |
@@ -295,7 +296,7 @@ LanguageTeacherAgent-English/
 │  ├─ src/                       # React UI（只有一张"尚未实现"说明页）
 │  ├─ tests/                     # vitest：元信息 + tauri.conf.json 边界断言
 │  └─ src-tauri/                 # Rust 主进程、tauri.conf.json、capabilities、icons
-├─ packages/contracts/           # 契约包（当前只有目录与说明，schema 属 T011）
+├─ packages/contracts/           # 契约包：schema/v1 是唯一来源，生成 TS + Python 类型（已落地）
 ├─ services/ai-core/             # Python 3.12 AI 运行时（当前只有健康检查）
 └─ evals/                        # 计划：评测集（尚未创建）
 ```

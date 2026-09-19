@@ -1,0 +1,26 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://engmentor.local/contracts/v1/version.schema.json",
+  "title": "ContractVersion",
+  "description": "契约版本协商（SPEC-M00 §5.2）。Sidecar 启动时上报自身支持的契约版本与 schema 清单；主进程比对不一致时返回 ENGM.CONTRACT.VERSION_MISMATCH 并拒绝服务，而不是带着不匹配的假设继续运行（§5.3 第 5 条）。",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["contractVersion", "schemaIds"],
+  "properties": {
+    "contractVersion": {
+      "type": "string",
+      "description": "契约大版本，形如 v1、v1.1。字段一旦冻结只能通过新增大版本演进（§5.2）。",
+      "pattern": "^v[0-9]+(\\.[0-9]+)*$"
+    },
+    "schemaIds": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "description": "该实现嵌入的 schema $id 集合。与 schema-manifest.json 的清单比对，防止某一侧落后于契约包（§5.3 第 6 条）。",
+      "items": {
+        "type": "string",
+        "pattern": "^https://engmentor\\.local/contracts/v1/[a-z][a-z0-9-]*\\.(schema\\.json|json)$"
+      }
+    }
+  }
+}
