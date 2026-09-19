@@ -13,11 +13,21 @@ Python 3.12 侧车进程。**当前只有一个健康检查**，没有任何教�
 
 ## 当前状态
 
+在仓库根安装依赖；其余命令请在**本目录**下执行（`uv run --project` 会把 cwd 留在仓库根，
+导致 mypy 找不到配置、ruff 与 pytest 的作用范围扩大）：
+
 ```powershell
-uv sync --locked --project services/ai-core   # 安装锁定依赖
-uv run --project services/ai-core pytest      # 运行健康检查测试
-uv run --project services/ai-core mypy        # 严格类型检查
+# 仓库根
+uv sync --locked --project services/ai-core
+
+# services/ai-core 目录下
+uv run pytest        # 运行健康检查测试
+uv run mypy          # 严格类型检查
+uv run ruff check .  # 静态检查
 ```
+
+项目内可直接使用的根级编排入口：`pnpm lint:py`、`pnpm typecheck:py`、`pnpm test:py`
+（它们已经替你做了 `cd services/ai-core`）。
 
 ## 不做的事
 

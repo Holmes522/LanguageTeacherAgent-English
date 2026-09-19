@@ -1,8 +1,8 @@
 # EngMentor（英师）
 
 > **当前状态：Pre-alpha（开发早期）**
-> EngMentor 还**不能安装、不能下载、不能使用**。本仓库目前只有规划文档、M00 工程设计和一个只读的工具链预检脚本，没有可运行的源代码、没有安装包、没有界面。
-> 本文件是"随产品成长的文档"：功能一旦真正实现并验证，对应章节才会从"计划"改为"可用"。**在章节标注为"待实现"时，请不要把它当作操作说明。**
+> EngMentor 还**不能安装、不能下载、不能使用**。仓库里目前有一个**可构建、可测试的空骨架**——桌面壳能编译、能启动，但界面只有一张说明"尚未实现"的页面——以及一套已固定版本的开发工具链。
+> **没有任何教学功能**，没有安装包，也没有可供试用的界面。本文件是"随产品成长的文档"：功能一旦真正实现并验证，对应章节才会从"计划"改为"可用"。**在章节标注为"待实现"时，请不要把它当作操作说明。**
 
 ---
 
@@ -174,13 +174,13 @@ EngMentor 是一款 **Windows 优先的本地桌面英语学习助手**。
 
 以下是开发机上**已安装并实测**的版本，不是计划值：
 
-| 工具 | 版本 | 固定方式 |
+| 工具 | 版本 | 固定方式（均已创建） |
 |---|---|---|
-| Node.js | `v22.20.0` | `.node-version` |
-| pnpm | `12.4.2` | 待 T010 写入根 `package.json` 的 `packageManager` |
-| uv | `0.12.17` | 计划写入 `services/ai-core/uv.lock`（T010/T011 创建） |
-| Python | `3.12.14` | 由 uv 托管；`.python-version` 随 T010 创建 |
-| Rust / cargo | `1.98.1`（host `x86_64-pc-windows-msvc`，含 rustfmt、clippy） | `rust-toolchain.toml`（精确版本号） |
+| Node.js | `v22.20.0` | `.node-version` 与根 `package.json` 的 `engines`（配合 `.npmrc` 的 `engine-strict=true`） |
+| pnpm | `12.4.2` | 根 `package.json` 的 `packageManager`；`pnpm-lock.yaml` 锁定全部依赖 |
+| uv | `0.12.17` | `services/ai-core/uv.lock`（18 个包） |
+| Python | `3.12.14` | 由 uv 托管；`services/ai-core/.python-version` = `3.12` |
+| Rust / cargo | `1.98.1`（host `x86_64-pc-windows-msvc`，含 rustfmt、clippy） | `rust-toolchain.toml`（精确版本号）、`apps/desktop/src-tauri/Cargo.lock`（430 个包） |
 
 Windows 编译环境同样已就绪：MSVC 链接器 `link.exe` 与 Windows SDK `10.0.26100.0` 均已安装并实测存在（`windows.h`、`x64\kernel32.lib`）。完整工具链已通过只读预检门禁（`scripts/preflight.ps1 -RequireReady` 退出码 0）。
 

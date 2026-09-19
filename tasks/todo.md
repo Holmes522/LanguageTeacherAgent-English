@@ -1,11 +1,11 @@
 # 英语老师 AI Agent 桌面客户端任务清单
 
-> 当前状态：T000 已完成（含 2026-09-19 GitHub 安全同步，`main` @ `ddd16be`）；M00 Spec v1.1 **已复核通过**（见 [`docs/specs/SPEC-M00-foundation-contracts.md`](../docs/specs/SPEC-M00-foundation-contracts.md)）；T010 进行中——工具链预检已交付并运行，**安装未开始，T010 未完成**。先完整阅读 [`PROJECT_STATUS.md`](../PROJECT_STATUS.md)。每完成一个模块或垂直切片，必须同步更新 `PROJECT_STATUS.md`。
+> 当前状态：T000 已完成（含 2026-09-19 GitHub 安全同步，`main` @ `ddd16be`）；M00 Spec v1.2 **已复核通过**（见 [`docs/specs/SPEC-M00-foundation-contracts.md`](../docs/specs/SPEC-M00-foundation-contracts.md)）；`T010-A`（Monorepo 骨架与可复现安装边界）**已完成并验证**——工具链已安装并固定、三个 lockfile 就绪、11 项验证命令全部通过；**`T010-B`（GitHub Actions CI）待做**。先完整阅读 [`PROJECT_STATUS.md`](../PROJECT_STATUS.md)。每完成一个模块或垂直切片，必须同步更新 `PROJECT_STATUS.md`。
 >
 > **执行顺序（2026-09-19 用户裁定）**：工具链预检与安装 → `M00（T010–T012）` → `T001–T005` 风险 Spike → `Checkpoint A` → Phase 2 及之后的业务模块。
 > 说明：M00 是 Spike 的载体（Spike 证据需要 Monorepo、CI、契约信封与锁文件才能复现），因此 **M00 先于 Spike**；本清单把原 Phase 0（Spike）与原 Phase 1（工程地基）合并为 **Phase 0**，Phase 2 起的编号与统一方案一致。`Checkpoint A` 只门控 Phase 2 及之后的业务模块，不再门控 T010–T012。
 >
-> 门控：**安装软件前必须获得用户对安装方案的确认**；在此之前不安装依赖、不生成 Tauri 脚手架、不开始编码。
+> 门控：新增依赖或修改数据 Schema 前需先获批准；T010-B 的 CI 需另行授权后再开始。
 
 ## Phase 0：工程地基与风险验证
 

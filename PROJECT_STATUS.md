@@ -204,6 +204,78 @@
 ```
 
 ## 11. 交接记录
+### 2026-09-19 — T010-A 纠错：ESLint 绕过、CSP 白名单、文档一致性（DONE）
+
+- Agent/负责人：ZCode（用户要求的三项 Required 修复）
+- 状态：DONE —— 修复项与验证项全部通过
+- 分支：`feat/M00-foundation-contracts`
+- Commit/PR：本分支提交；未创建 PR，未 push `main`，未 force push；未开始 T010-B
+- **修复 1：WebView 网络 API 的 ESLint 绕过**
+  - 实测基线（修复前）：8 种写法里只有裸 `fetch` 被拦，`window.fetch`、`globalThis.fetch`、`self.fetch`、
+    `window["fetch"]`、`globalThis["WebSocket"]`、`self["EventSource"]`、`window.XMLHttpRequest` **全部 exit 0 通过**。
+  - 根因：只有 `no-restricted-globals`（仅匹配裸标识符），点属性与方括号访问没有规则覆盖。
+  - 修复：在 `eslint.config.mjs` 中按写法分层加规则——`no-restricted-globals`（裸标识符）、
+    `no-restricted-properties`（`window`/`globalThis`/`self` 的点属性，20 条组合）、
+    `no-restricted-syntax`（静态方括号属性，单条正则选择器覆盖全部组合）。CSP 与 capability **未放宽**。
+  - 新增 `apps/desktop/tests/lintNetworkBoundary.test.ts`：**真的运行 ESLint 引擎**（Node API `lintText`，
+    虚拟路径 `apps/desktop/src/__lint_network_probe__.ts`）并断言真实诊断与真实 CLI 退出码。
+    当前 55 项测试：4 类写法 ×（4 API × 3 全局对象）+ 安全负例（`export const answer = 42`、
+    经 `@tauri-apps/api` 的 invoke）+ 5 项 CLI 退出码断言。
+  - **实测修正了我自己的一个错误假设**：我原以为 `const { fetch } = window` 解构取值能绕过，
+    测试写成了"已知缺口"后立刻失败——`no-restricted-properties` 实际覆盖解构。已把解构并入"必须被拒绝"矩阵。
+  - 已知且**实测确认**的绕过形式（作为可执行记录写在测试里，规则若变强该测试会失败并要求更新文档）：
+    动态拼接属性名 `window[key]`、先取别名 `const w = window; w.fetch(...)`、别名上的方括号 `g["fetch"]`，
+    以及在模块作用域使用 `this.fetch`。这些由第 2、3 层在运行时兜住。
+- **修复 2：CSP 回归测试改为白名单精确断言**
+  - `apps/desktop/tests/tauriConfig.test.ts` 从"筛查 http/https 外部地址"改为
+    `connect-src` 的 token 集合必须**恰好等于** `'self'`、`ipc:`、`http://ipc.localhost`。
+  - 反例覆盖 10 类额外 token（外部 http/https、`ws://`、`wss://`、`data:`、`blob:`、`filesystem:`、
+    自定义协议、`*`、`'unsafe-inline'`）以及两类"被削弱的白名单"（缺 `ipc:`、缺 `'self'`），
+    每类都必须让断言失败——证明白名单不是空话。
+  - **CSP 配置本身未改动**：官方文档核实后确认无冲突。Tauri v2 官方 CSP 文档给出的示例即为
+    `"connect-src": "ipc: http://ipc.localhost"`（https://v2.tauri.app/security/csp/ ），
+    本仓库在此基础上增加 `'self'`（Vite 构建产物从自身源加载）。新增 `script-src` 精确断言。
+  - 附带新增依赖：`eslint@10.11.0` 加入 `@engm/desktop` 的 devDependencies（测试需要导入 ESLint API）。
+    这是开发工具依赖，不是业务依赖；版本与根包一致。
+- **修复 3：文档与真实工程状态对齐**
+  - `README.md`：顶部陈述由"没有可运行的源代码、没有安装包、没有界面"改为
+    "有可构建、可测试的空骨架与说明页，但没有可安装产品或教学功能"；工具链表中 pnpm / uv / Python
+    三行由"待 T010 写入 / 计划创建"改为已创建并实际固定的状态与具体锁文件。
+  - `tasks/todo.md`：顶部状态改为 `T010-A` 已完成并验证、`T010-B` 待做；门控句从"安装前需确认"
+    （已过期）改为"新增依赖或改 Schema 需批准、T010-B 需另行授权"。
+  - `docs/specs/SPEC-M00-foundation-contracts.md`：§7 的 `pnpm lint:py` / `typecheck:py` / `test:py`
+    与 AC-1 由 `uv run --project ...` 改为 `cd services/ai-core && uv run ...`，并新增一段**实测依据**说明
+    为什么必须 `cd`；同时把 `typecheck:web` 从 `tsc -b --noEmit` 更正为实际使用的
+    `tsc --noEmit -p tsconfig.json`（`tsc -b` 不允许与 `--noEmit` 同用）。§5.4 第 1 层描述更新为
+    实际覆盖范围，并明确写出"ESLint 是编译期防线、不是安全边界"与其已知绕过形式。
+  - `tasks/plan.md`：Verification Commands 换成已实测的命令，并去掉尚未启用的 `pnpm tauri build`
+    （`bundle.active` 仍为 `false`，属 T050）。
+  - `services/ai-core/README.md`：命令分"仓库根执行"与"本目录执行"两部分。
+- **Python 命令为何必须 `cd`：三条实测证据**（不是推断）
+  1. `uv run --project services/ai-core python -c "import os; print(os.getcwd())"` → `G:\LanguageTeacherAgent-English`
+     （cwd 留在仓库根，不进入项目目录）；
+  2. `mypy` 从仓库根执行直接失败：`Missing target module, package, files, or command.`（读不到 `[tool.mypy]` 的 `files`）；
+  3. 在 `packages/contracts/` 放置一个含未使用 import 的探针文件后，`ruff check .` 从仓库根执行会报出该文件的错误，
+     而在 `services/ai-core` 下执行则 `All checks passed!` —— 说明从仓库根执行时 ruff 的检查范围会扩大到整个仓库，
+     且对 ai-core 之外的文件套用不上本项目的 `select` 规则。
+  `uv sync --locked --project ...` 与 `uv lock --check --project ...` 已实测从仓库根正常，未改动。
+- 验证命令与结果（真实退出码见提交时的记录）：
+  - `scripts/preflight.ps1 -RequireReady -NoJson -Quiet` → 0
+  - `pnpm install --frozen-lockfile` → 0
+  - `uv sync --locked --project services/ai-core` → 0
+  - `uv lock --check --project services/ai-core` → 0
+  - `pnpm lint` → 0；`pnpm typecheck` → 0；`pnpm test` → 0（前端 75 项、Python 3 项、Rust 2 项）；`pnpm build` → 0
+  - `pnpm contracts:check` → 0
+  - `git diff --check` → 0；Markdown 相对链接检查 → 0 断链；密钥扫描 → 0 命中；`git status --short` → 干净
+- 未完成内容：T010-B（CI）未开始；`.gitleaks.toml` 与 `pnpm check:secrets` 未落地。
+- 已知问题与风险：
+  - ESLint 的覆盖是"已列举写法"的覆盖，不是穷尽覆盖；动态键与别名仍可绕过。**不要**把第 1 层的通过
+    当作"WebView 无法访问外网"的证明，那由 CSP 与 capability 保证。
+  - CSP 白名单断言的对象是配置字符串；对 CDN/代理在运行时注入的额外来源无能为力（当前没有此类依赖）。
+- 环境或密钥要求：无需密钥；未创建 `.env`。
+- 下一个 Agent 应先做：等待用户授权 **T010-B**：创建 `.github/workflows/ci.yml`（contracts / web / python /
+  rust / secrets 五个 job、`windows-latest`、零密钥依赖、三方 Action 固定完整 SHA），并补 `.gitleaks.toml`
+  与 `pnpm check:secrets`。
 ### 2026-09-19 — T010-A Monorepo 骨架与可复现安装边界（DONE；等待审阅）
 
 - Agent/负责人：ZCode（用户授权 T010-A）

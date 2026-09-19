@@ -222,11 +222,18 @@ B-4 不依赖单一机制，三层各自独立可测、任一失效仍不放开�
 
 | 层 | 机制 | 落地位置 | 验证方式 |
 |---|---|---|---|
-| 第 1 层：静态检查 | ESLint 禁止 WebView 代码直接使用 `fetch`、`XMLHttpRequest`、`WebSocket`、`EventSource`，只允许经 `@tauri-apps/api` 的 invoke 包装层 | `apps/desktop/src` 的 ESLint 配置 | ESLint 规则自身有单测：注入违规样例必须报错 |
+| 第 1 层：静态检查 | ESLint 禁止 WebView 代码直接触碰 `fetch`、`XMLHttpRequest`、`WebSocket`、`EventSource`；覆盖裸全局标识符、`window`/`globalThis`/`self` 的点属性访问、静态方括号属性访问与解构取值。只允许经 `@tauri-apps/api` 的 invoke 包装层 | `apps/desktop/src` 与 `packages/contracts/src` 的 ESLint 配置 | `apps/desktop/tests/lintNetworkBoundary.test.ts` **真的运行 ESLint 引擎**：三类写法 × 4 个 API × 3 个全局对象共 52 个样例必须产生网络规则诊断，另有 CLI 真实退出码断言与安全负例控制 |
 | 第 2 层：CSP | `tauri.conf.json` 的 `app.security.csp` 设 `default-src 'self'`；`connect-src` 只含自身与 Tauri IPC 源，**不含任何外部域**；`script-src 'self'`；不使用 `'unsafe-eval'` | `tauri.conf.json` | 构建后断言 HTML 中被注入的 CSP 字符串与预期一致 |
 | 第 3 层：能力 | `src-tauri/capabilities/*.json` 不授予任何 HTTP 权限（不引入 `tauri-plugin-http`），不授予 `shell`、通配 `fs` 权限 | `src-tauri/capabilities/` | `pnpm check:capabilities` 比对白名单，多出即失败 |
 
-> CSP 中的具体源令牌（Windows 上 Tauri 使用 `http://tauri.localhost` 与 `http://ipc.localhost`）在 T010 依 Tauri v2 官方文档实测确认后写入，不凭记忆固化。
+> **ESLint 是编译期防线，不是安全边界。** 已实测确认它拦不住动态拼接的属性名（`window["fe" + "tch"]`）
+> 与先取别名再访问（`const w = window; w.fetch(...)`）；这些形式作为"已知未覆盖"写在上述测试文件里。
+> 越权网络访问最终必须由第 2 层 CSP 与第 3 层 capability 在运行时拦住——因此这两层都不放宽。
+>
+> CSP 的源令牌已依 Tauri v2 官方文档核实：官方示例给出 `"connect-src": "ipc: http://ipc.localhost"`
+> （https://v2.tauri.app/security/csp/ ）。本仓库在该示例基础上增加 `'self'`（前端由 Vite 构建后从自身源加载），
+> 并由回归测试以**白名单精确相等**方式断言：任何额外 token（含 `ws://`、`wss://`、`data:`、`blob:`、
+> 自定义协议与外部地址）都会使测试失败。
 
 ## 6. 工具链与锁文件策略
 
@@ -276,19 +283,31 @@ B-4 不依赖单一机制，三层各自独立可测、任一失效仍不放开�
 | 契约漂移检查 | `pnpm contracts:check` | 生成物与 schema 一致；非 0 表示漂移 |
 | Lint | `pnpm lint` | = `lint:web` + `lint:py` + `lint:rust` |
 | | `pnpm lint:web` | ESLint（`apps/desktop/src`、`packages/contracts/src`） |
-| | `pnpm lint:py` | `uv run --project services/ai-core ruff check .` |
+| | `pnpm lint:py` | `cd services/ai-core && uv run ruff check .` |
 | | `pnpm lint:rust` | `cargo fmt --check` + `cargo clippy --all-targets -- -D warnings` |
 | Typecheck | `pnpm typecheck` | = `typecheck:web` + `typecheck:py` |
-| | `pnpm typecheck:web` | `tsc -b --noEmit` |
-| | `pnpm typecheck:py` | `uv run --project services/ai-core mypy`（严格基线，见 §6.1） |
+| | `pnpm typecheck:web` | `tsc --noEmit -p tsconfig.json`（`tsc -b` 不允许与 `--noEmit` 同时使用） |
+| | `pnpm typecheck:py` | `cd services/ai-core && uv run mypy`（严格基线，见 §6.1） |
 | Test | `pnpm test` | = `test:web` + `test:py` + `test:rust` |
 | | `pnpm test:web` | Vitest（含契约 TS 侧正反例） |
-| | `pnpm test:py` | `uv run --project services/ai-core pytest`（含契约 Python 侧正反例） |
+| | `pnpm test:py` | `cd services/ai-core && uv run pytest`（含契约 Python 侧正反例） |
 | | `test:rust` | `cargo test --locked`（含 Rust 运行时 Schema 校验与 manifest 一致性） |
 | | `pnpm test:contracts` | 三方一致性：同一 fixtures 集合的 TS / Python / Rust 结论比对 |
 | Build | `pnpm build` | Web 静态构建 + Tauri 骨架构建 |
 | 安全自检 | `pnpm check:secrets` | 与 CI 同版本的 gitleaks + 同一 `.gitleaks.toml` |
 | 边界自检 | `pnpm check:capabilities` | 输出 Tauri capability 授权清单并与白名单比对 |
+
+> **Python 命令为什么要先 `cd`（T010-A 实测结论）**：`uv run --project services/ai-core <tool>`
+> 会把**工作目录留在仓库根**。实测后果：
+> - `mypy` 直接失败（`Missing target module, package, files, or command.`），因为它在当前目录找不到
+>   `[tool.mypy]` 配置，也就拿不到 `files` 目标；
+> - `ruff check .` 虽能运行，但会把**整个仓库**当作检查范围（用 `packages/contracts/` 下的探针文件
+>   实测确认），且对 ai-core 之外的文件套用不上本项目的 `select` 规则，作用范围与配置都不一致；
+> - `pytest` 会从仓库根递归收集，而不是按 `testpaths` 只收 `services/ai-core/tests`。
+>
+> 因此三个 Python 工具统一写成 `cd services/ai-core && uv run ...`，让 cwd 与项目一致。
+> `uv sync --locked --project ...` 与 `uv lock --check --project ...` **不需要** `cd`，已实测从仓库根
+> 执行正常，故保持原样。
 
 ## 8. GitHub Actions 最小 CI
 
@@ -353,7 +372,7 @@ ENGM_EMBEDDING_MODEL=BAAI/bge-small-en-v1.5
 
 | ID | 验收标准 | 验证命令 | 期望 |
 |---|---|---|---|
-| AC-1 | 目录结构与两条 workspace 生效 | `pnpm -r list --depth -1`；`uv run --project services/ai-core python -c "import english_teacher"` | 列出 `apps/desktop`、`packages/contracts`；Python 包可导入 |
+| AC-1 | 目录结构与两条 workspace 生效 | `pnpm -r list --depth -1`；`cd services/ai-core && uv run python -c "import english_teacher"` | 列出 `apps/desktop`、`packages/contracts`；Python 包可导入 |
 | AC-2 | 三个边界 locked 安装可复现且不改写 lockfile | `pnpm install --frozen-lockfile`、`uv sync --locked --project services/ai-core`、`uv lock --check --project services/ai-core`、`cargo build --locked`，随后 `git status --porcelain` | 命令全部成功；`git status --porcelain` 为空 |
 | AC-3 | 契约包可正常导入，且不依赖任何路径技巧 | 删除 `PYTHONPATH` 后在干净虚拟环境执行 `python -c "from engm_contracts.v1 import Envelope"`；`rg -n "PYTHONPATH\|sys\.path" services/ packages/` | 导入成功；仓库内无 `PYTHONPATH`/`sys.path` 注入 |
 | AC-4 | TS / Python / Rust 三方对同一组正反例结论一致 | `pnpm test:contracts` | 同一 fixtures 集合三方结论完全一致；未知错误码、缺 `requestId`、`ok` 与负载不匹配、越界字段均被拒 |

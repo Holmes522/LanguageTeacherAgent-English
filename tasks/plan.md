@@ -87,21 +87,28 @@ contracts → desktop shell / local storage → LLM gateway / knowledge registry
 
 ## Verification Commands
 
-具体命令在项目脚手架创建后锁定，预期入口如下：
+命令已在 T010-A 落地并实测（Python 工具需先 `cd` 到项目目录，原因见下方说明）：
 
 ```powershell
 pnpm install --frozen-lockfile
 uv sync --locked --project services/ai-core
 uv lock --check --project services/ai-core
+cargo build --locked --manifest-path apps/desktop/src-tauri/Cargo.toml
 pnpm lint
 pnpm typecheck
 pnpm test
-uv run --project services/ai-core ruff check .
-uv run --project services/ai-core pytest
-pnpm tauri build
+pnpm build
+pnpm contracts:check
 ```
 
-> `uv sync --locked`（而非 `--frozen`）用于断言 `uv.lock` 与 `pyproject.toml` 一致；`--frozen` 只跳过更新，锁文件过期时不会报错。完整命令、Rust 运行时契约校验与验收标准见 [`docs/specs/SPEC-M00-foundation-contracts.md`](../docs/specs/SPEC-M00-foundation-contracts.md)。
+> `uv sync --locked`（而非 `--frozen`）用于断言 `uv.lock` 与 `pyproject.toml` 一致；`--frozen` 只跳过更新，锁文件过期时不会报错。
+>
+> Python 工具（ruff / mypy / pytest）在 `services/ai-core` 目录下执行：从仓库根用
+> `uv run --project services/ai-core <tool>` 时 cwd 仍在仓库根，实测会导致 mypy 找不到配置而直接失败、
+> ruff 把整个仓库当作检查范围、pytest 从仓库根递归收集。完整命令、Rust 运行时契约校验与验收标准见
+> [`docs/specs/SPEC-M00-foundation-contracts.md`](../docs/specs/SPEC-M00-foundation-contracts.md) 第 7 节。
+
+> `pnpm tauri build` 尚未启用：`bundle.active` 保持 `false`，安装包与签名属于 T050。
 
 ## Risks and Mitigations
 
