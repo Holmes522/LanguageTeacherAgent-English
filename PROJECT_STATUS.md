@@ -260,6 +260,10 @@
      - **一次真实回答**：M03 的最小版本，流式返回并渲染。
      - **可以推迟**：PyInstaller 打包 Sidecar（原 T001 的最大风险项）。用户当前是唯一使用者，开发期用 `uv run` 起 Sidecar 即可；**但打包风险不会消失**，一旦要分发给他人就必须回到它。
      - **不可推迟**：CSP / capability / ESLint 三层边界；密钥不进 Git/日志/SQLite/WebView；`main` 不直接推送。
+  4. **切片 Spec 已起草，待用户审阅**：[`docs/specs/SPEC-SLICE-01-local-usable-sentence-scoring.md`](docs/specs/SPEC-SLICE-01-local-usable-sentence-scoring.md)。
+     第一条能力建议做**句子评分**而非查词：查词的开放许可词典来源与打包方式尚未决定（Q1 只定了政策），
+     而句子评分的量表已定（Q4 + 统一方案 §6.4 的 40/25/25/10），零外部内容源、无授权问题。
+     按 AGENTS.md「没有获批准的模块 Spec，不开始该模块编码」，批准该 Spec 即可立即开工。
   3. 动手前先跑 `pnpm install --frozen-lockfile`、`pnpm preflight:gate`，确认本机环境仍然就绪。
 ### 2026-09-19 — 首次真实 CI 运行与两项修正（DONE；CI 已在 GitHub 上跑过）
 
