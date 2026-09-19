@@ -36,14 +36,14 @@
 
 | 字段 | 当前值 |
 |---|---|
-| Agent/负责人 | Claude Code（用户 Holmes 确认） |
-| 当前任务 | T000：确认产品边界与授权（已 DONE；下一步 T001 Sidecar Spike） |
-| 当前模块 | `M00-foundation-contracts`（规划阶段） |
-| 分支 | 尚未初始化 Git 仓库 |
-| 状态 | `DONE` |
+| Agent/负责人 | ZCode（用户 Holmes 授权） |
+| 当前任务 | T000 收尾：GitHub 安全同步（已 DONE，`main` @ `237a337`） |
+| 当前模块 | `M00-foundation-contracts`（Spec 编写阶段） |
+| 分支 | `main`（已与 `origin/main` 同步：`237a337`） |
+| 状态 | `DONE`（T000 收尾部分）；`M00` 仍为 `IN_PROGRESS` |
 | 开始时间 | 2026-09-19 |
 | 计划修改文件 | `PROJECT_STATUS.md`、`tasks/todo.md`、`docs/decisions/T000-产品边界与技术决策建议.md` |
-| 下一检查点 | 用户确认远程同步方案 → 初始化本地 Git 并连接远程 → 启动 T001–T005 |
+| 下一检查点 | M00 Spec 编写 → 用户审阅 `SPEC-M00-foundation-contracts.md` → 启动 T001–T005 Spike |
 
 ## 4. 模块状态总表
 
@@ -51,7 +51,7 @@
 
 | 模块 ID | 模块 | 优先级 | 状态 | 最后验证 | 证据/PR | 下一步 |
 |---|---|:---:|---|---|---|---|
-| `M00-foundation-contracts` | Monorepo、契约、CI、ADR 与规则 | P0 | IN_PROGRESS | 2026-09-19 Q1–Q8 已确认 | [`T000 决策`](docs/decisions/T000-产品边界与技术决策建议.md) | 完成 T001–T005 Spike 并批准 ADR-001~006 |
+| `M00-foundation-contracts` | Monorepo、契约、CI、ADR 与规则 | P0 | IN_PROGRESS | 2026-09-19 Q1–Q8 已确认；`main` @ `237a337` 已同步 | [`T000 决策`](docs/decisions/T000-产品边界与技术决策建议.md)、`origin/main` | 编写并审阅 M00 Spec；完成 T001–T005 Spike 并批准 ADR-001~007 |
 | `M01-desktop-shell` | Tauri 桌面壳、Sidecar、安装更新 | P0 | NOT_STARTED | — | — | Sidecar Spike |
 | `M02-local-storage-settings` | SQLite、迁移、设置、密钥 | P0 | NOT_STARTED | — | — | 等待 M00/M01 |
 | `M03-llm-gateway` | DeepSeek、流式、结构化输出、预算 | P0 | NOT_STARTED | — | — | DeepSeek Spike |
@@ -105,12 +105,17 @@
 
 ## 8. 仓库与验证基线
 
-- Git：当前目录尚未初始化为 Git 仓库。
-- 目标 GitHub：`https://github.com/Holmes522/LanguageTeacherAgent-English`；本地尚未添加/核对 `origin`。
+- Git：已初始化，默认分支 `main`，`origin` = `https://github.com/Holmes522/LanguageTeacherAgent-English.git`。
+- 远程只读核对（2026-09-19，写操作前执行）：公开仓库、`default_branch=main`、`size=0`、无分支/标签/提交（`commits` API 返回 409、`contents` 返回 404），确认为空仓库后才执行首次推送。
+- 首次同步（2026-09-19）：`main` 初始提交 `237a337f144a391477734bca8c70dbf0aedc820d`，提交信息 `docs: initialize project specifications and T000 decisions`；已推送至 `origin/main`，本地 `HEAD` 与 `origin/main` 一致；未使用 force push。
+- 同步内容：`.gitignore`、`AGENTS.md`、`CLAUDE.md`、`PROJECT_STATUS.md`、`docs/**`、`tasks/**`，共 10 个文本文件、3,945 行。
+- 排除内容：`.claude/settings.local.json`（IDE/Agent 本地文件，已由 `.gitignore` 忽略，未入库）。
+- 入库安全扫描：暂存内容无密钥、真实用户数据、未授权词典内容、模型权重或构建产物；工作区无二进制文件与超过 200 KB 的大文件。
 - 源码：尚未创建。
 - 测试：尚未创建。
 - CI：尚未创建。
 - 已有规划文档：统一方案、实施计划、任务清单和两份历史方案。
+- 未授权事项（勿自行执行）：分支保护、PR 创建、`gh` CLI 安装与认证、Actions 首次运行。
 
 ## 9. 发现的冲突
 
@@ -155,6 +160,40 @@
 ```
 
 ## 11. 交接记录
+
+### 2026-09-19 — T000 收尾：GitHub 安全初始化与首次同步（DONE）
+
+- Agent/负责人：ZCode（用户 Holmes 授权）
+- 状态：DONE
+- 分支：`main`（`origin/main` @ `237a337`）
+- Commit/PR：`237a337f144a391477734bca8c70dbf0aedc820d`（无 PR，用户未授权创建）
+- 完成内容：
+  - 按启动顺序完整阅读 `PROJECT_STATUS.md`、`AGENTS.md`、`CLAUDE.md`、统一方案、T000 决策、`tasks/plan.md`、`tasks/todo.md`。
+  - 写操作前只读核对远程：`git ls-remote` 无任何 ref；API `size=0`、`branches=[]`、`tags=[]`、`commits` 409、`contents` 404，确认远程为空仓库。
+  - 创建 `.gitignore`（密钥、依赖、构建产物、本地数据库、向量索引、模型权重、用户上传、日志、IDE 临时文件）。
+  - `git init -b main`，添加 `origin`，仅暂存规则、文档、任务清单与 `.gitignore`。
+  - 审查 staged diff：10 个文本文件、3,945 行、无二进制、无密钥命中；`.claude/` 已被忽略。
+  - 创建初始提交（Conventional Commit）并 `git push -u origin main`，未使用 force push。
+  - 回读远程 `refs/heads/main` 确认与本地 `HEAD` 一致。
+- 未完成内容：M00 Spec 编写；T001–T005 Spike 未开始；分支保护与 Actions 由用户在网页端处理。
+- 关键文件：`.gitignore`、`PROJECT_STATUS.md`、`tasks/todo.md`、`docs/decisions/T000-产品边界与技术决策建议.md`
+- 接口/Schema 变化：无
+- 数据迁移：无
+- ADR/决策：无新增；T000 的 Q1–Q8 保持已确认状态
+- 验证命令与结果：
+  - `git ls-remote <origin>` → 无 ref（空仓库确认）
+  - `curl https://api.github.com/repos/Holmes522/LanguageTeacherAgent-English` → `size=0`, `default_branch=main`, `private=false`
+  - `git diff --cached --numstat` → 10 个文本文件，无二进制
+  - `git push -u origin main` → `PUSH_EXIT=0`，`[new branch] main -> main`
+  - `git ls-remote origin` → `237a337…` `refs/heads/main`，与 `git rev-parse HEAD` 一致
+- Eval/性能/Token 结果：不适用（本轮无代码）
+- 已知问题与风险：
+  - 推送认证依赖本机 Git Credential Manager；后续 Agent 首次 push 时若凭据过期会交互式提示。
+  - 工作区行尾为 CRLF、仓库内为 LF（`core.autocrlf`）；建议后续在 M00 增加 `.gitattributes` 统一策略（本轮未授权，未添加）。
+  - 远程为空仓库时首次推送的默认分支由本地 `main` 决定；仓库设置中的默认分支已复核为 `main`。
+  - 未启用分支保护，`main` 目前允许直接 push（用户网页端处理）。
+- 环境或密钥要求：无新增；本轮未创建任何密钥或 `.env`。
+- 下一个 Agent 应先做：编写 `docs/specs/SPEC-M00-foundation-contracts.md` 并等待审阅；未获批准前不安装依赖、不生成 Tauri 脚手架、不开始 T001。
 
 ### 2026-09-19 — T000 决策确认（DONE）
 
