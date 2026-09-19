@@ -37,13 +37,13 @@
 | 字段 | 当前值 |
 |---|---|
 | Agent/负责人 | ZCode（用户 Holmes 授权） |
-| 当前任务 | 工具链安装与版本固化（pnpm / uv / Python 3.12 / Rust 已装并固定；**MSVC/Windows SDK 需提权，BLOCKED**） |
+| 当前任务 | T010 前置工具链**已全部就绪**（预检 `VERDICT Ready`、`-RequireReady` 退出码 0）；**等待用户授权进入 T010 骨架** |
 | 当前模块 | `M00-foundation-contracts`（T010 进行中，未完成） |
 | 分支 | `feat/M00-foundation-contracts`（基于 `origin/main` @ `ddd16be`） |
-| 状态 | `IN_PROGRESS`；预检 14 项中 12 项 OK，唯一 Blocking 缺失为 `msvc`（Windows SDK） |
+| 状态 | `IN_PROGRESS`；预检 14 项 ok=13 missing=0 unknown=1，全部 Blocking 项就绪（唯一 unknown 为 Advisory 级 `vbscript`） |
 | 开始时间 | 2026-09-19 |
 | 计划修改文件 | `rust-toolchain.toml`、`.node-version`、`scripts/lib/PreflightChecks.psm1`、`scripts/tests/preflight.Tests.ps1`、`README.md`、`PROJECT_STATUS.md`、`tasks/todo.md` |
-| 下一检查点 | 在**提权** shell 安装 Windows SDK → 预检 `-RequireReady` 退出码 0 → 继续 T010（Monorepo、锁文件、CI） |
+| 下一检查点 | 用户授权 → T010（Monorepo 骨架、三个锁文件、`.gitattributes`/`.npmrc`/`.env.example`/`.gitleaks.toml`、GitHub Actions 最小 CI） |
 
 **执行顺序（2026-09-19 用户裁定，替代此前冲突描述）**：工具链预检与安装（T010 的第一步）→ `M00（T010–T012）` → `T001–T005` 风险 Spike → `Checkpoint A` → Phase 1 及之后的业务模块。M00 不再排在 Spike 之后。
 
@@ -53,7 +53,7 @@
 
 | 模块 ID | 模块 | 优先级 | 状态 | 最后验证 | 证据/PR | 下一步 |
 |---|---|:---:|---|---|---|---|
-| `M00-foundation-contracts` | Monorepo、契约、CI、ADR 与规则 | P0 | IN_PROGRESS | 2026-09-19 工具链已装并固定；预检 14 项 ok=12 missing=1 unknown=1（仅 msvc/SDK 阻塞） | [`SPEC-M00`](docs/specs/SPEC-M00-foundation-contracts.md)、`scripts/preflight.ps1`、`rust-toolchain.toml` | 提权安装 Windows SDK → 预检 `-RequireReady` 归零 → 完成 T010–T012（**先于** T001–T005 Spike） |
+| `M00-foundation-contracts` | Monorepo、契约、CI、ADR 与规则 | P0 | IN_PROGRESS | 2026-09-19 工具链全部就绪：预检 14 项 ok=13 missing=0 unknown=1，`-RequireReady` 退出码 0 | [`SPEC-M00`](docs/specs/SPEC-M00-foundation-contracts.md)、`scripts/preflight.ps1`、`rust-toolchain.toml` | 等待授权 → 完成 T010–T012 骨架与 CI（**先于** T001–T005 Spike） |
 | `M01-desktop-shell` | Tauri 桌面壳、Sidecar、安装更新 | P0 | NOT_STARTED | — | — | Sidecar Spike |
 | `M02-local-storage-settings` | SQLite、迁移、设置、密钥 | P0 | NOT_STARTED | — | — | 等待 M00/M01 |
 | `M03-llm-gateway` | DeepSeek、流式、结构化输出、预算 | P0 | NOT_STARTED | — | — | DeepSeek Spike |
@@ -132,11 +132,13 @@
 - **预检缺陷（本轮发现并修复）**：v2.0.0 的 `Vswhere` 探针在 `GetNewClosure()` 闭包内读取模块作用域变量 `$script:VswhereCandidates`，而闭包只捕获**局部**变量，导致该变量恒为空、探针始终返回「未找到 vswhere」。后果是不会误报 MISSING（状态为 UNKNOWN，属安全的保守失败），但会给出错误的诊断方向。修复：把候选路径改为 `Get-RealProbes` 的参数（局部变量）并在闭包内捕获，新增 `Get-VswhereCandidatePaths` 与 3 项回归测试。本机正是 `C:\Program Files (x86)\...\Installer\vswhere.exe` 这一被漏检的位置。
 - 预检执行结果（2026-09-19 修复后，报告模式，退出码 0；共 **14** 项：ok=12 missing=1 unknown=1）：
   - **已就绪（Blocking）**：Git、Node `v22.20.0`、pnpm `12.4.2`、uv `0.12.17`、Python `3.12`、rustc `1.98.1`、cargo `1.98.1`、WebView2 `153.0.4234.32`。
-  - **缺失（Blocking，唯一阻塞项）**：`msvc` —— 检测到 **Visual Studio Community 2022 `17.11.3`**（2024-09-17 预装）自带 VC 工具 `14.41.34120` 与 `link.exe`，但 **Windows SDK 缺失**：注册表 `KitsRoot10` 指向 `C:\Program Files (x86)\Windows Kits\10\`，而该目录下没有 `Include\` 与 `Lib\`，全盘也找不到 `windows.h` / `kernel32.lib`。缺 SDK 无法链接 Windows 二进制。
+  - **缺失（Blocking）**：无。
+  - **就绪明细 `msvc`（2026-09-19 用户完成 SDK 安装后）**：三部分齐备。VC 工具由 **Visual Studio Build Tools 2022 `17.14.37710.0`** 提供（`C:\Program Files (x86)\Microsoft Visual Studio\2022\BuildTools`，VC 工具 `14.44.35207`），`link.exe` = `...\BuildTools\VC\Tools\MSVC\14.44.35207\bin\Hostx64\x64\link.exe`；Windows SDK `10.0.26100.0` 位于 `C:\Program Files (x86)\Windows Kits\10\`，已实测存在 `Include\10.0.26100.0\um\windows.h` 与 `Lib\10.0.26100.0\um\x64\kernel32.Lib`。该行 status 为 `OK`，`version` = SDK 根路径。仍为**存在性检查**，真正的链接验证在 T010 的 `cargo build --locked`。
   - **无法判定（Advisory）**：`vbscript` —— 需提权才能查询按需功能状态；**仅为 MSI 打包前置项，非当前开发硬阻塞**。
   - JSON 报告写入 `tmp/preflight/`（已被 `.gitignore` 忽略）。`-OutputDirectory` 只允许指向 `tmp/preflight/` 或其子目录，仓库外路径被拒绝（退出码 2）。
-- 安装副作用（需知悉）：失败的 VS Build Tools 安装尝试（winget `Microsoft.VisualStudio.2022.BuildTools`，退出码 143，未注册到 winget）创建了 `C:\Program Files (x86)\Microsoft Visual Studio\Installer\`（含 `vswhere.exe`，这一发现反而让预检得以正确诊断）以及一个**不完整**的 `C:\Program Files (x86)\Microsoft Visual Studio\2022\BuildTools\` 目录树（Common7 / DIA SDK / Licenses / MSBuild / SDK / Team Tools / VC）。**未删除**：目录位于 Program Files 下、需要提权，且可能与本机既有 VS 安装共享组件；是否清除应由用户决定。
-- 剩余阻塞：**Windows SDK 安装需要管理员权限**，当前 shell 为非提权（预检报告 `elevated: False`），因此无法完成「预检 `-RequireReady` 退出码 0」。解除方式见 §11 交接记录的下一步。
+- 安装副作用（已由用户处理，需知悉）：此前失败的 VS Build Tools 安装尝试（winget `Microsoft.VisualStudio.2022.BuildTools`，退出码 143）创建了 `C:\Program Files (x86)\Microsoft Visual Studio\Installer\`（含 `vswhere.exe`，这一发现反而让预检得以正确诊断）以及一个当时**不完整**的 `...\2022\BuildTools\` 目录树。用户随后通过 Visual Studio Installer 完成安装，该实例现已是**完整且已注册**的 VS 实例（Build Tools 2022 `17.14.37710.0`，实例目录 `_Instances\b672361a` 已生成 `state.json`）。
+- 全部 Blocking 项就绪：**预检 `-RequireReady` 退出码 0**（报告模式 `VERDICT Ready`，14 项 ok=13 missing=0 unknown=1，唯一的 unknown 是 Advisory 级 `vbscript`）。
+- 待办提示：`winget list` 未把 Build Tools 2022 列为已安装包（不在其 ARP 记录中），因此后续升级/卸载应走 Visual Studio Installer 而不是 winget。
 - 已有规划文档：统一方案、实施计划、任务清单和两份历史方案。
 - 未授权事项（勿自行执行）：分支保护、PR 创建、`gh` CLI 安装与认证、Actions 首次运行、安装依赖与生成脚手架（须在 M00 Spec 获批后）。
 
@@ -191,6 +193,40 @@
 ```
 
 ## 11. 交接记录
+
+### 2026-09-19 — Windows SDK 就绪验证（DONE；等待 T010 授权）
+
+- Agent/负责人：ZCode（只读验证；SDK 由用户通过 Visual Studio Installer 安装）
+- 状态：DONE（**只读验证**：未安装或删除任何软件，未修改注册表/环境变量/VS 安装）
+- 分支：`feat/M00-foundation-contracts`
+- Commit/PR：本分支提交；未创建 PR，未 push `main`，未 force push
+- 完成内容：
+  - 只读验证 Windows SDK：`Test-Path "C:\Program Files (x86)\Windows Kits\10\Include"` → `True`；`...\Lib` → `True`；SDK 版本目录 `10.0.26100.0`；实测存在 `Include\10.0.26100.0\um\windows.h` 与 `Lib\10.0.26100.0\um\x64\kernel32.Lib`。
+  - 预检 `-RequireReady -NoJson -Quiet` → **退出码 0**（此前为 1）。报告模式 `VERDICT Ready`，14 项 **ok=13 missing=0 unknown=1**，`blockingNotOk` 为空。
+  - `msvc` 由 MISSING 变为 **OK**：VC 工具 + `link.exe` + Windows SDK 三部分齐备（证据见 §8）。
+  - Pester **53/53** 通过（本轮未改动任何脚本或测试）。
+  - 记录实例变化：用户通过 Visual Studio Installer 完成了 Build Tools 2022 实例（`17.14.37710.0`，VC 工具 `14.44.35207`），其 `_Instances\b672361a` 已生成 `state.json`、成为完整实例；原有 Community 2022（`17.11.35303.130`）仍在。`vswhere -latest` 现解析到 BuildTools（版本号更高）。
+  - 同步更新 `README.md`：按 `AGENTS.md` 的 README 维护规则，删除「当前开发环境尚缺 Windows SDK」这一已过时提示，并更新工具链表。
+- 未完成内容：T010 骨架、锁文件、CI、契约包均未创建——**等待用户授权**。
+- 关键文件：`PROJECT_STATUS.md`、`tasks/todo.md`、`README.md`
+- 接口/Schema 变化：无
+- 数据迁移：无
+- ADR/决策：无新增
+- 验证命令与结果：
+  - `Test-Path 'C:\Program Files (x86)\Windows Kits\10\Include'` → `True`
+  - `Test-Path 'C:\Program Files (x86)\Windows Kits\10\Lib'` → `True`
+  - `scripts/preflight.ps1 -RequireReady -NoJson -Quiet` → **退出码 0**
+  - `scripts/preflight.ps1` → `VERDICT Ready`，`ok=13 missing=0 unknown=1`
+  - `Invoke-Pester scripts/tests/preflight.Tests.ps1` → `Passed: 53 Failed: 0`
+  - `git status --short` → 仅本次文档改动
+- Eval/性能/Token 结果：不适用
+- 已知问题与风险：
+  - `msvc` 仍是**存在性检查**（VC 工具 + `link.exe` + SDK 目录），不是真实编译；真正的验证是 T010 的 `cargo build --locked`。若该构建失败，应优先怀疑此处。
+  - `vbscript` 仍为 UNKNOWN（需提权查询），但它只是 MSI 打包前置项，不阻塞 T010。
+  - `winget list` 未列出 Build Tools 2022，后续升级/卸载应走 Visual Studio Installer。
+  - 本机现有两个 VS 实例（Community `17.11.35303.130` 与 Build Tools `17.14.37710.0`）；`vswhere -latest` 解析到版本更高的 BuildTools。若后续需要固定实例，应在 Spec 或 ADR 中明确选择依据。
+- 环境或密钥要求：无需密钥；未创建 `.env`。
+- 下一个 Agent 应先做：**等待用户授权进入 T010**；授权后建 Monorepo 骨架与 workspace、落 `.gitattributes`（先消除 CRLF 对漂移检查的影响）、三个锁文件、`.npmrc`/`.env.example`/`.gitleaks.toml` 与最小 CI，并在同一提交内按 Spec AC-1/AC-2/AC-6/AC-10/AC-12 验证。
 
 ### 2026-09-19 — 工具链安装与版本固化（IN_PROGRESS；MSVC/Windows SDK BLOCKED）
 

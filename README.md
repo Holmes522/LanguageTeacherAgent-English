@@ -179,7 +179,7 @@ EngMentor 是一款 **Windows 优先的本地桌面英语学习助手**。
 | Python | `3.12.14` | 由 uv 托管；`.python-version` 随 T010 创建 |
 | Rust / cargo | `1.98.1`（host `x86_64-pc-windows-msvc`，含 rustfmt、clippy） | `rust-toolchain.toml`（精确版本号） |
 
-**当前开发环境尚缺 Windows SDK**，因此还不能链接 Windows 二进制；补齐之前 `cargo build` 会失败。这是预检脚本目前唯一的 Blocking 未就绪项。
+Windows 编译环境同样已就绪：MSVC 链接器 `link.exe` 与 Windows SDK `10.0.26100.0` 均已安装并实测存在（`windows.h`、`x64\kernel32.lib`）。完整工具链已通过只读预检门禁（`scripts/preflight.ps1 -RequireReady` 退出码 0）。
 
 ### 目前可以运行的命令（已实际验证）
 
