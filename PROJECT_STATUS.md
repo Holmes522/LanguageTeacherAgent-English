@@ -215,6 +215,45 @@
 ```
 
 ## 11. 交接记录
+### 2026-09-19 — 首次真实 CI 运行与两项修正（DONE；CI 已在 GitHub 上跑过）
+
+- Agent/负责人：ZCode（用户授权「自行让 CI 在 GitHub 上运行」）
+- 状态：DONE —— **CI 已首次在 GitHub 上真实运行**，发现并修复两处只有真实 runner 才暴露的问题
+- 分支：`feat/M00-foundation-contracts`；PR：**draft PR #1**（仅为触发 CI 而开，不请求评审、不合并）
+- 为什么要开 PR：`workflow_dispatch` 在本仓库不可用——Actions API 只暴露**默认分支上存在**的工作流，
+  而 `ci.yml` 只在功能分支上。实测证据：`GET /actions/workflows → total_count = 0`；
+  `POST /actions/workflows/ci.yml/dispatches {"ref":"feat/..."} → HTTP 404`；
+  同时 `GET /actions/permissions → enabled = true, allowed_actions = all`（Actions 本身是开的）。
+  `push` 触发器只监听 `main`，而 `main` 禁止直接推送，因此 PR 是当前唯一可行的触发器。
+- **首次运行结果（run #1，35431084030，event=pull_request）**：`web` ✅、`python` ✅、`rust` ✅、
+  `contracts` ❌、`secrets` ❌ —— 3/5 通过。这正是此前"本机验证不了"的部分。
+- 两处失败的真实原因（均已核实，非推断）：
+  1. **`secrets`：`gitleaks-action@v3.0.0` 在 Windows 上装不了 8.30.1**。它按
+     `..._windows_x64.tar.gz` 拼地址，而 gitleaks 8.30.1 的 Windows 资产是 `.zip`
+     （darwin/linux 才是 tar.gz）→ 404；该 Action 的 `action.yml` **没有任何 inputs**，无配置绕行路径。
+     按 ADR-008 改为**自管安装**：下载固定版本 Windows zip + 官方 `checksums.txt`，
+     校验 SHA-256 通过后才解压使用，再执行与本机**逐字相同**的扫描命令
+     `gitleaks git --config .gitleaks.toml --no-banner --redact --exit-code 1`。
+     附带收益：只依赖 MIT 的 CLI，移除了 gitleaks-action 的 EULA 依赖（也消除了"转组织账号会失败"的风险）。
+  2. **`contracts`：三方一致性脚本在 runner 上无法启动 pnpm**。脚本用
+     `spawnSync(command, args, { shell: false })`，而 runner 上的 pnpm 是 `pnpm.cmd` shim，
+     Node 在 `shell: false` 下不能执行 .cmd/.bat → `status = null`，脚本报"自身失败（退出码 null）"。
+     本机没暴露该问题，是因为本机装的是真正的 `pnpm.exe`。已改为在 Windows 上经由 shell 执行
+     （参数全是固定且不含空格的 token，无用户输入，不引入注入面），并把 `result.error` 与
+     "测试失败"分开诊断，避免下次再被误读成契约不一致。
+- 关键文件：`.github/workflows/ci.yml`、`scripts/contracts-consistency.mjs`、`docs/decisions/ADR-008-ci-secret-scan-self-managed-gitleaks.md`（新增）、`docs/specs/SPEC-M00-foundation-contracts.md`（v1.5）
+- 验证命令与结果：
+  - 本机 `pnpm test:contracts` → **0**（32/32 三方一致；shell 修改后复验）
+  - 本机 `pnpm check:secrets` → **0**（版本断言逻辑未变）
+  - 本机 `pnpm lint` / `typecheck` / `test` / `build` → 全部 **0**
+  - GitHub Actions run #1 → `web`/`python`/`rust` 通过；两处失败已按上表修复，修复后需再跑一次确认（见下）
+- 已知问题与风险：
+  - draft PR #1 是**为了跑 CI 而存在**的；请勿合并。它的存在使 `pull_request` 触发器可用，这既是优点
+    （CI 从此刻起可被真实触发）也是需要用户知晓的状态变化：仓库从此有了一个 open PR。
+  - 若用户希望保持"无 PR"状态，替代方案是把 `ci.yml` 推到 `main`（属于禁止操作），或在 Actions 页面
+    手动触发（当前不可用）。这一取舍已如实记录。
+- 下一个 Agent 应先做：确认修复后的第二次 CI 运行 5/5 通过；若通过，把 SPEC/README 中"CI 从未运行过"
+  的表述改为已运行并附 run 链接，再进入 T012。
 ### 2026-09-19 — T011：版本化本地契约与三方一致性（DONE；CI 仍未在 GitHub 上运行）
 
 - Agent/负责人：ZCode（用户授权 T011）

@@ -20,11 +20,29 @@ const verdictDir = join(repoRoot, 'tmp', 'contracts-verdicts')
 
 const LANGUAGES = ['ts', 'py', 'rust']
 
+/**
+ * 在 Windows 上必须经由 shell 执行命令。
+ *
+ * 原因（首次在 GitHub runner 上实测发现）：runner 上的 pnpm 是 `pnpm.cmd` 这类 shim，而 Node 的
+ * spawnSync 在 `shell: false` 下无法直接执行 .cmd/.bat，会以 `status = null` 失败——本机之所以没暴露
+ * 这个问题，是因为本机装的是真正的 `pnpm.exe`。这里传入的参数全是固定的、不含空格的 token
+ * （没有来自用户的输入），所以开启 shell 不引入注入面；POSIX 上保持 `shell: false`，不多套一层解释器。
+ */
+const useShell = process.platform === 'win32'
+
 function run(label, command, args, cwd) {
   process.stdout.write(`\n=== ${label} ===\n`)
-  const result = spawnSync(command, args, { cwd, encoding: 'utf8', shell: false })
+  const result = spawnSync(command, args, { cwd, encoding: 'utf8', shell: useShell })
   const output = `${result.stdout ?? ''}${result.stderr ?? ''}`
   process.stdout.write(output.split('\n').slice(-12).join('\n'))
+
+  if (result.error) {
+    // status 为 null 且 error 有值 = 进程根本没起来（例如 .cmd shim 无法解析）。
+    // 必须与"测试失败"分开诊断，否则会被误读成契约不一致。
+    console.error(`\n[test:contracts] FAILED —— ${label} 无法启动：${result.error.message}`)
+    console.error('  这通常意味着该命令在当前平台需要经由 shell 执行，而不是契约本身不一致。')
+    process.exit(1)
+  }
   if (result.status !== 0) {
     console.error(`\n[test:contracts] FAILED —— ${label} 自身失败（退出码 ${result.status}）。`)
     process.exit(1)

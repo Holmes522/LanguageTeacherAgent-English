@@ -3,7 +3,7 @@
 | 字段 | 值 |
 |---|---|
 | 模块 ID | `M00-foundation-contracts` |
-| Spec 版本 | v1.4（记录 T011 实现的契约来源、生成链路与运行时校验） |
+| Spec 版本 | v1.5（记录首次真实 CI 运行后的两项修正：gitleaks 自管安装、三方脚本的 Windows shell 启动） |
 | 状态 | v1.1 已复核通过；v1.2 增补文档基线（AC-15～AC-18）；v1.3 增补 §8 CI 落地；v1.4 为 T011 实现记录，验收标准未变 |
 | 日期 | 2026-09-19 |
 | 负责人 | ZCode（用户 Holmes 审阅） |
@@ -362,7 +362,7 @@ B-4 不依赖单一机制，三层各自独立可测、任一失效仍不放开�
 | `actions/setup-node` | v7.0.0 | `820762786026740c76f36085b0efc47a31fe5020` |
 | `astral-sh/setup-uv` | v9.0.0 | `c771a70e6277c0a99b617c7a806ffedaca235ff9` |
 | `Swatinem/rust-cache` | v2.9.2 | `6323deb102c322ba6fcbdcafc7e3dddab59af2b6` |
-| `gitleaks/gitleaks-action` | v3.0.0 | `e0c47f4f8be36e29cdc102c57e68cb5cbf0e8d1e` |
+| ~~`gitleaks/gitleaks-action`~~ | ~~v3.0.0~~ | **已移除，见 ADR-008**：该 Action 在 Windows 上无法安装 8.30.1（按 `.tar.gz` 拼地址，而 Windows 资产是 `.zip`），且 `action.yml` 无任何 inputs，无法绕过。改为按发布方 `checksums.txt` 校验后自管安装 CLI。 |
 
 - 每个 SHA 都通过 `git ls-remote --tags` 取自上游 tag（annotated tag 取 `^{}` 指向的 commit）。
 - 升级必须是独立提交，并重新验证该 Action 的输入契约（本表所列版本已核对 `action.yml` 的 `inputs`：
@@ -375,15 +375,13 @@ B-4 不依赖单一机制，三层各自独立可测、任一失效仍不放开�
 
 gitleaks 约束（D-3）：
 
-- Action 引用**必须**是完整 commit SHA，不使用 `@v2` 之类浮动 tag。
+- ~~Action 引用必须是完整 commit SHA~~ → **自管安装（ADR-008）**：`secrets` job 从 gitleaks 官方 release 下载固定版本的 Windows `.zip` 与 `checksums.txt`，校验 SHA-256 通过后才解压使用。版本仍由 `GITLEAKS_VERSION: 8.30.1` 单一常量控制，`check-secrets.mjs` 继续逐字断言它与本机版本一致。
 - **固定版本：gitleaks `8.30.1`**，写在 `ci.yml` 的 `GITLEAKS_VERSION` 与
   `scripts/check-secrets.mjs` 的 `PINNED_GITLEAKS_VERSION` 两处，并由后者逐字断言两者相同。
-- 关闭非必要能力（实测确认的参数名，见 gitleaks-action v3 官方 README）：
-  `GITLEAKS_ENABLE_COMMENTS=false`、`GITLEAKS_ENABLE_UPLOAD_ARTIFACT=false`、
-  `GITLEAKS_ENABLE_SUMMARY=false`；只保留退出码语义。
-- 许可证：gitleaks **CLI 为 MIT**；`gitleaks-action` 本身采用 GITLEAKS-ACTION END-USER LICENSE
-  AGREEMENT——**个人账号免费**，组织账号需要许可证密钥（`GITLEAKS_LICENSE`）。本仓库属个人账号，
-  因此工作流不引入该 secret；若仓库转为组织账号，这一步会要求它，必须在此之前取得许可证。
+- 非必要能力：自管调用 CLI 后，PR 评论、SARIF 上传、摘要这些能力**根本不存在**（而不是被关闭），结果只通过退出码表达——D-3 的意图被更强地满足。扫描命令与本机逐字相同：`gitleaks git --config .gitleaks.toml --no-banner --redact --exit-code 1`。
+- 许可证：只使用 gitleaks **CLI（MIT）**。原先的 `gitleaks-action` 采用 GITLEAKS-ACTION END-USER LICENSE
+  AGREEMENT（个人账号免费、组织账号需 `GITLEAKS_LICENSE`）；ADR-008 移除它之后，"仓库转为组织账号会导致
+  `secrets` job 失败"这一风险随之消除，M12 的许可证清单也少一项。
 - 本机 `pnpm check:secrets` 使用与 CI **相同版本**的 gitleaks 和同一个 `.gitleaks.toml`；脚本先断言本机
   版本与固定版本一致，不一致直接拒绝扫描（退出码 2），而不是给出与 CI 不可比的结论。
 - 本机 gitleaks 的安装方式写入 README：`winget install --id Gitleaks.Gitleaks --version 8.30.1 -e`；
@@ -502,6 +500,7 @@ ENGM_EMBEDDING_MODEL=BAAI/bge-small-en-v1.5
 
 | 日期 | 版本 | 变更 | 作者 |
 |---|---|---|---|
+| 2026-09-19 | v1.5 | **首次真实 CI 运行后的修正**：`secrets` job 由 gitleaks-action 改为按发布方 checksums.txt 校验后自管安装 CLI（ADR-008，原因是该 Action 在 Windows 上无法安装 8.30.1）；§8.1 的 Action 清单减为 5 条；`contracts` job 中三方一致性脚本的命令启动方式修正为在 Windows 上经由 shell（原先直连 `.cmd` shim 会以 status=null 失败） | ZCode |
 | 2026-09-19 | v1.4 | T011 实现记录：§5.2 补自包含 schema 的理由与错误码唯一来源的断言方式；§5.3 第 2 条固定 `jsonschema` 0.56.0 并说明必须关闭默认特性；§7 的 `contracts:generate` / `contracts:check` / `test:contracts` 标记为已落地并记录两段式检查的顺序约束；§8 的 `contracts` job 由推迟改为已落地（并注明仍未在 GitHub 上运行过） | ZCode |
 | 2026-09-19 | v1.3 | T010-B 落地增补：§8 增补 `workflow_dispatch` 触发（及理由）、四个可运行 job 的实际步骤、新增 §8.1 六条 Action 的固定 SHA 记录与升级要求、gitleaks 固定 `8.30.1` 与许可证说明（个人账号免费/组织需密钥）、忽略规则与密钥扫描拆为两步、实测的扫描能力边界；明确 `contracts` job 推迟到 T011 及其后果（T011 前 CI 不检查契约漂移）；§7 补两个自检命令的落地状态与覆盖范围 | ZCode |
 | 2026-09-19 | v1.2 | 新增 README 文档基线：`README.md` 纳入 M00 交付物与验收（AC-15 内部链接无断链、AC-16 状态与 `PROJECT_STATUS.md` 一致、AC-17 无虚构内容、AC-18 用户使用指南结构与发布门禁）；目录结构与实施顺序同步补充 README | ZCode |

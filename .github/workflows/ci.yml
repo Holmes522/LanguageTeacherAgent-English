@@ -3,6 +3,7 @@
 # 为什么所有 Action 都写 40 位 SHA 而不是 @v7：浮动 tag 可以被上游移动，也能被账号
 # 接管后重新指向恶意提交；固定 SHA 让"上游变了"变成一次显式的、可评审的改动。
 # 每条 uses 后面的注释标出该 SHA 对应的 tag 与来源仓库，便于人工核对与升级。
+# 例外：gitleaks 不在 Action 里，改为按发布方 checksums.txt 校验后自管安装（见 ADR-008 与 secrets job）。
 #
 # contracts job（T011 补齐）：它需要 pnpm contracts:generate 与 pnpm test:contracts，
 # 两者在 T011 之前不存在，因此 T010-B 明确把该 job 推迟到 T011。
@@ -213,17 +214,42 @@ jobs:
       - name: 敏感路径的忽略规则（AC-10 后半，只需要 Node）
         run: node scripts/check-ignored.mjs
 
-      - name: gitleaks 扫描（全量历史）
-        # gitleaks-action v3 只是把运行时从 Node 20 换到 Node 24，输入与行为与 v2 一致。
-        # 个人账号不需要 GITLEAKS_LICENSE；若本仓库将来转为组织账号，这一步会要求它。
-        # 三项额外的能力按 D-3 全部关闭，只保留退出码语义。
-        uses: gitleaks/gitleaks-action@e0c47f4f8be36e29cdc102c57e68cb5cbf0e8d1e # v3.0.0
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          GITLEAKS_VERSION: ${{ env.GITLEAKS_VERSION }}
-          GITLEAKS_CONFIG: .gitleaks.toml
-          # 这三个值显式加引号：不引号会被 YAML 解析成布尔 false，再由 GitHub 转成字符串，
-          # 多一层类型转换就多一处无法在本机验证的猜测。字面字符串是唯一确定的写法。
-          GITLEAKS_ENABLE_COMMENTS: "false"
-          GITLEAKS_ENABLE_UPLOAD_ARTIFACT: "false"
-          GITLEAKS_ENABLE_SUMMARY: "false"
+      # 为什么不用 gitleaks-action：v3.0.0 的安装逻辑按 .tar.gz 拼接 Windows 下载地址，
+      # 而 gitleaks 8.30.1 的 Windows 资产是 .zip（darwin/linux 才是 tar.gz），必然 404；
+      # 该 Action 的 action.yml 没有任何 inputs，无法指定已安装的二进制或修正资源名。
+      # 首次真实运行（run #1）就撞上这个问题。改为自管下载 + 校验发布方 checksums.txt，
+      # 既保住"CI 与本机同版本"这一硬要求，又对真正执行扫描的二进制做了哈希校验，
+      # 同时也去掉了 gitleaks-action 的 EULA 依赖（CLI 是 MIT）。详见 ADR-008。
+      - name: 安装固定版本的 gitleaks（校验发布方 SHA-256）
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $version = $env:GITLEAKS_VERSION
+          $asset = "gitleaks_${version}_windows_x64.zip"
+          $base = "https://github.com/gitleaks/gitleaks/releases/download/v$version"
+          $dir = Join-Path $env:RUNNER_TEMP 'gitleaks'
+          New-Item -ItemType Directory -Force -Path $dir | Out-Null
+
+          $zip = Join-Path $dir $asset
+          $sums = Join-Path $dir 'checksums.txt'
+          Invoke-WebRequest -Uri "$base/$asset" -OutFile $zip
+          Invoke-WebRequest -Uri "$base/gitleaks_${version}_checksums.txt" -OutFile $sums
+
+          # checksums.txt 每行形如 "<sha256>  <文件名>"
+          $pattern = ([regex]::Escape($asset) + '$')
+          $line = Get-Content $sums | Where-Object { $_ -match $pattern } | Select-Object -First 1
+          if (-not $line) { throw "checksums.txt 中没有 $asset，拒绝使用未经校验的下载物。" }
+          $expected = ($line -split '\s+')[0].ToLower()
+          $actual = (Get-FileHash -Path $zip -Algorithm SHA256).Hash.ToLower()
+          if ($actual -ne $expected) {
+            throw "gitleaks 校验和不匹配：expected=$expected actual=$actual"
+          }
+          Write-Host "gitleaks $version 校验和匹配：$actual"
+
+          Expand-Archive -Path $zip -DestinationPath $dir -Force
+          Add-Content -Path $env:GITHUB_PATH -Value $dir
+          & (Join-Path $dir 'gitleaks.exe') version
+
+      - name: gitleaks 扫描（全量历史，与本机同一命令）
+        # 与本机 scripts/check-secrets.mjs 使用逐字相同的调用，因此两边的结论可比。
+        run: gitleaks git --config .gitleaks.toml --no-banner --redact --exit-code 1
