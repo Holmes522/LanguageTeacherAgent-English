@@ -37,13 +37,13 @@
 | 字段 | 当前值 |
 |---|---|
 | Agent/负责人 | ZCode（用户 Holmes 授权） |
-| 当前任务 | `T010-A`（Monorepo 骨架与可复现安装边界）**已完成并验证**；`T010-B`（GitHub Actions CI）待做 |
-| 当前模块 | `M00-foundation-contracts`（T010-A 完成；T010-B 与 T011/T012 未开始） |
+| 当前任务 | `T010`（Monorepo 骨架、可复现安装边界与最小 CI）**已完成并在本机验证**：`T010-A`（骨架 / lockfile / 质量命令）+ `T010-B`（CI 工作流 + 两个安全自检脚本）。**CI 尚未在 GitHub 上运行过**（无 PR、不推 `main`、Actions 未触发）。`T011`（版本化本地契约）待做 |
+| 当前模块 | `M00-foundation-contracts`（T010 完成；T011/T012 未开始） |
 | 分支 | `feat/M00-foundation-contracts`（基于 `origin/main` @ `ddd16be`） |
-| 状态 | `IN_PROGRESS`；骨架与三个 lockfile 就绪，11 项验证命令全部 exit 0 |
+| 状态 | `IN_PROGRESS`；骨架、三个 lockfile、质量命令与两个自检脚本全部本机 exit 0；CI 工作流已推送但从未运行 |
 | 开始时间 | 2026-09-19 |
-| 计划修改文件 | `package.json`、`pnpm-workspace.yaml`、`.npmrc`、`.gitattributes`、`.env.example`、`eslint.config.mjs`、`apps/desktop/**`、`packages/contracts/**`、`services/ai-core/**`、`scripts/contracts-check.mjs`、`README.md`、`PROJECT_STATUS.md`、`tasks/todo.md` |
-| 下一检查点 | 用户审阅 T010-A → 授权 `T010-B`（GitHub Actions 最小 CI：contracts / web / python / rust / secrets 五个 job、Windows runner、零密钥） |
+| 计划修改文件 | `package.json`、`pnpm-workspace.yaml`、`.npmrc`、`.gitattributes`、`.env.example`、`.gitleaks.toml`、`eslint.config.mjs`、`.github/workflows/ci.yml`、`apps/desktop/**`、`packages/contracts/**`、`services/ai-core/**`、`scripts/{contracts-check,check-ignored,check-secrets,audit-capabilities}.mjs`、`README.md`、`PROJECT_STATUS.md`、`tasks/todo.md` |
+| 下一检查点 | 在 GitHub 上实跑一次 CI（Actions 页 `workflow_dispatch` 手动触发，或开 PR）→ 授权 `T011`（契约 schema、生成链路，并补齐 CI 的 `contracts` job） |
 
 **执行顺序（2026-09-19 用户裁定，替代此前冲突描述）**：工具链预检与安装（T010 的第一步）→ `M00（T010–T012）` → `T001–T005` 风险 Spike → `Checkpoint A` → Phase 1 及之后的业务模块。M00 不再排在 Spike 之后。
 
@@ -53,7 +53,7 @@
 
 | 模块 ID | 模块 | 优先级 | 状态 | 最后验证 | 证据/PR | 下一步 |
 |---|---|:---:|---|---|---|---|
-| `M00-foundation-contracts` | Monorepo、契约、CI、ADR 与规则 | P0 | IN_PROGRESS | 2026-09-19 T010-A 完成：11 项验证命令全部 exit 0；三个 lockfile 就绪 | [`SPEC-M00`](docs/specs/SPEC-M00-foundation-contracts.md)、`apps/`、`packages/`、`services/` | T010-B（CI）→ T011（契约）→ T012（设置与密钥）（**先于** T001–T005 Spike） |
+| `M00-foundation-contracts` | Monorepo、契约、CI、ADR 与规则 | P0 | IN_PROGRESS | 2026-09-19 T010 完成：骨架与三个 lockfile 就绪，质量命令 + 两个安全自检脚本全部 exit 0；**CI 工作流未在 GitHub 上运行过** | [`SPEC-M00`](docs/specs/SPEC-M00-foundation-contracts.md)、`.github/workflows/ci.yml`、`apps/`、`packages/`、`services/`、`scripts/` | 在 GitHub 上实跑 CI → T011（契约 + `contracts` job）→ T012（设置与密钥）（**先于** T001–T005 Spike） |
 | `M01-desktop-shell` | Tauri 桌面壳、Sidecar、安装更新 | P0 | NOT_STARTED | — | — | Sidecar Spike |
 | `M02-local-storage-settings` | SQLite、迁移、设置、密钥 | P0 | NOT_STARTED | — | — | 等待 M00/M01 |
 | `M03-llm-gateway` | DeepSeek、流式、结构化输出、预算 | P0 | NOT_STARTED | — | — | DeepSeek Spike |
@@ -115,10 +115,10 @@
 - 同步内容：`.gitignore`、`AGENTS.md`、`CLAUDE.md`、`PROJECT_STATUS.md`、`docs/**`、`tasks/**`，共 10 个文本文件、3,945 行。
 - 排除内容：`.claude/settings.local.json`（IDE/Agent 本地文件，已由 `.gitignore` 忽略，未入库）。
 - 入库安全扫描：暂存内容无密钥、真实用户数据、未授权词典内容、模型权重或构建产物；工作区无二进制文件与超过 200 KB 的大文件。
-- 源码：尚未创建。
-- 测试：尚未创建。
-- CI：尚未创建。
-- 已就绪的 Spec：[`docs/specs/SPEC-M00-foundation-contracts.md`](docs/specs/SPEC-M00-foundation-contracts.md)（**v1.2**，v1.1 已复核通过，v1.2 增补 README 文档基线验收项 AC-15～AC-18）。
+- 源码：已创建（T010-A 空骨架；`apps/desktop`、`packages/contracts`、`services/ai-core`、`scripts/`）。
+- 测试：已创建（T010-A：vitest + pytest + cargo test；T010-B 前另有 Pester 53 项）。
+- CI：工作流已创建并推送（T010-B，`.github/workflows/ci.yml`），但**从未在 GitHub 上运行过**——无 PR、未推 `main`、Actions 未被触发。
+- 已就绪的 Spec：[`docs/specs/SPEC-M00-foundation-contracts.md`](docs/specs/SPEC-M00-foundation-contracts.md)（**v1.3**；v1.1 已复核通过，v1.2 增补 README 文档基线验收项 AC-15～AC-18，v1.3 增补 §8 CI 落地契约、§8.1 固定 SHA 记录与 `contracts` job 的推迟）。
 - 文档基线：[`README.md`](README.md) 已建立（Living README，Pre-alpha 状态如实声明，用户使用指南按 10 个固定小节预留为"待实现"占位，不含未实现命令、虚构截图或下载地址）。维护规则见 [`AGENTS.md`](AGENTS.md)「README 维护规则」：README 与实际产品不一致时模块不得标记 `DONE`。
 - 本机工具链（2026-09-19 已安装并固定版本）：
   - Git `2.51.0.windows.1`（`core.autocrlf` 生效，工作区 CRLF/仓库 LF，待 `.gitattributes` 统一）；Node `v22.20.0`（已写入 `.node-version`）；npm `10.9.3`（仅引导）；Corepack `0.34.0`；winget `v1.29.290`；WebView2 Runtime `153.0.4234.32`。
@@ -148,10 +148,21 @@
   - `packages/contracts`：只有目录、README 与占位模块；**没有任何 schema 或生成物**（属 T011）。
   - `services/ai-core`：Python 3.12 包 `engm-ai-core`，仅含严格类型化的健康检查与 3 项测试。
   - `scripts/contracts-check.mjs`：契约目录结构检查，并显式报告"生成尚未启用"；检测到 schema/生成物即失败。
-- 规模约束（本轮刻意不做）：无查词/语法/评分/RAG/导入/题库、无真实 API 调用、无密钥存储、无 GitHub Actions CI（T010-B）、无安装包、未启用 `bundle.active`。
+- Monorepo CI 与安全自检（T010-B，2026-09-19 完成，**尚未在 GitHub 上运行**）：
+  - `.github/workflows/ci.yml`：`windows-latest`、`permissions: contents: read`、`concurrency` 取消旧运行、零仓库 secret；四个可运行 job——`web`（install/lint/typecheck/test/build:web/check:capabilities）、`python`（`uv sync --locked` → `uv lock --check` → ruff → mypy → pytest，全部在 `services/ai-core` 下执行）、`rust`（`pnpm build:web` → `lint:rust` → `cargo test --locked` → `build:rust`）、`secrets`（忽略规则 + gitleaks 全量历史）。触发器为 `push(main)` / `pull_request` / **`workflow_dispatch`**（后者是本轮增补：当时既不能开 PR 也不能推 `main`，没有它就永远不会有运行记录）。
+  - **`contracts` job 明确推迟到 T011**：它需要 `pnpm contracts:generate` 与 `pnpm test:contracts`，两者尚不存在。后果已写入 Spec §8——**T011 之前 CI 不检查契约漂移**（当前 `packages/contracts` 是空壳，故此刻无实际风险，但缺口有到期日）。
+  - 六条三方 Action 全部固定到 40 位 commit SHA，来源与 tag 记录在 Spec §8.1：`actions/checkout` v7.0.1、`pnpm/action-setup` v6.1.0、`actions/setup-node` v7.0.0、`astral-sh/setup-uv` v9.0.0、`Swatinem/rust-cache` v2.9.2、`gitleaks/gitleaks-action` v3.0.0。每条 SHA 由 `git ls-remote --tags` 取自上游（annotated tag 取 `^{}` 的 commit），输入契约逐条核对过 `action.yml`。
+  - `.gitleaks.toml`：仅 `[extend] useDefault = true`，**不含任何例外**（全量历史 0 命中，没有理由放宽）。gitleaks 固定 `8.30.1`；CLI 为 MIT，`gitleaks-action` 采用商业 EULA 但个人账号免费，本仓库属个人账号（若转为组织账号需 `GITLEAKS_LICENSE`）。
+  - `scripts/check-ignored.mjs`：8 条敏感路径必须被忽略 + `.env.example` **必须不被忽略**（反向断言），并打印命中规则的出处（AC-10 后半）。
+  - `scripts/check-secrets.mjs`：断言本机 gitleaks 版本与 `ci.yml` 的 `GITLEAKS_VERSION` 逐字一致，不符即拒绝扫描；退出码 0/1/2 区分"通过 / 发现问题 / 检查没能按约定口径执行"。
+  - `scripts/audit-capabilities.mjs`：审计 capability 权限白名单（仅允许 `core:default`）、`Cargo.toml` 的特权插件、前端 `@tauri-apps/plugin-*` 依赖（AC-9 第 3 层）。
+  - 本机新增工具：gitleaks `8.30.1`（winget `Gitleaks.Gitleaks`，用户作用域，安装时校验了安装器哈希）。它不是预检项——缺失只影响 `check:secrets`，而该脚本会给出安装指引并失败。
+  - **实测的扫描能力边界**（非推测）：植入假凭据验证 gitleaks 确实会失败——GitHub PAT（`ghp_`）与 `api_key = "..."` 均检出（exit 1）；AWS 规则要求 `AWS_ACCESS_KEY_ID`/`AWS_SECRET_ACCESS_KEY` 一类关键字上下文，孤立的一个 `AKIA...` 形态字符串不命中（gitleaks 默认配置同样如此，与本仓库配置无关）。故密钥扫描是真实门禁，但不是"扫过即安全"的保证。
+  - 失败关闭实测：`ci.yml` 版本漂移 → exit 2；gitleaks 缺失 → exit 2；本机版本不符 → exit 2；正常 → exit 0。
+- 规模约束（本轮刻意不做）：无查词/语法/评分/RAG/导入/题库、无真实 API 调用、无密钥存储、无安装包、未启用 `bundle.active`、CI 的 `contracts` job（T011）、无 macOS 矩阵（P1）。
 - 待办提示：`winget list` 未把 Build Tools 2022 列为已安装包（不在其 ARP 记录中），因此后续升级/卸载应走 Visual Studio Installer 而不是 winget。
 - 已有规划文档：统一方案、实施计划、任务清单和两份历史方案。
-- 未授权事项（勿自行执行）：分支保护、PR 创建、`gh` CLI 安装与认证、Actions 首次运行、安装依赖与生成脚手架（须在 M00 Spec 获批后）。
+- 未授权事项（勿自行执行）：分支保护、PR 创建、`gh` CLI 安装与认证、**触发 Actions 运行**、安装依赖与生成脚手架（须在 M00 Spec 获批后）。注意：CI 工作流本身已按用户 2026-09-19 的指示提交入库，但"让它在 GitHub 上真的跑一次"属于上表未授权范围，需用户操作或在 Actions 页手动触发。
 
 ## 9. 发现的冲突
 
@@ -204,6 +215,62 @@
 ```
 
 ## 11. 交接记录
+### 2026-09-19 — T010-B：GitHub Actions 最小 CI 与安全自检（DONE；CI 尚未在 GitHub 上运行）
+
+- Agent/负责人：ZCode（用户 Holmes 授权 T010-B）
+- 状态：DONE —— **本机可验证的部分全部通过**；但"CI 在 GitHub 上真的能跑通"**未完成**，见"未完成内容"
+- 分支：`feat/M00-foundation-contracts`
+- Commit/PR：本分支提交；未创建 PR，未 push `main`，未 force push
+- 完成内容：
+  1. **`.github/workflows/ci.yml`**：`windows-latest`、`permissions: contents: read`、并发取消旧运行、零仓库 secret；四个可运行 job——`web`、`python`、`rust`、`secrets`（详见 §8）。
+  2. **触发器增补 `workflow_dispatch`**：原 Spec 只有 `push(main)` 与 `pull_request`，而本仓库当时既不允许开 PR 也不允许推 `main`，那样工作流永远不会有运行记录——等于交付一个从未被证明能跑的文件。手动触发让验证不必先改变分支或 PR 状态。
+  3. **六条三方 Action 固定完整 SHA**（Spec §8.1 记录 tag 与来源）：`checkout` v7.0.1、`pnpm/action-setup` v6.1.0、`setup-node` v7.0.0、`setup-uv` v9.0.0、`rust-cache` v2.9.2、`gitleaks-action` v3.0.0。SHA 由 `git ls-remote --tags` 取自上游（annotated tag 取 `^{}`），输入契约逐条核对 `action.yml`。Rust 不引入额外 Action：runner 自带 rustup，`rust-toolchain.toml` 触发按精确版本安装。
+  4. **`.gitleaks.toml`**：仅 `[extend] useDefault = true`，**零例外**（全量历史 0 命中，没有理由放宽）。
+  5. **`scripts/check-ignored.mjs`**：8 条敏感路径必须被忽略 + `.env.example` 必须**不被**忽略（反向断言，`.gitignore` 里 `.env.*` 与 `!.env.example` 相邻，这是真实存在的误伤路径），并打印命中规则出处。
+  6. **`scripts/check-secrets.mjs`**：断言本机 gitleaks 版本与 `ci.yml` 的 `GITLEAKS_VERSION` 逐字一致；退出码 0/1/2 区分"通过 / 发现问题 / 检查没能按约定口径执行"。
+  7. **`scripts/audit-capabilities.mjs`**：审计 capability 权限白名单（仅 `core:default`）、`Cargo.toml` 特权插件、前端 `@tauri-apps/plugin-*` 依赖，并打印完整授权清单（AC-9 第 3 层原先没有实现，本轮补齐）。
+  8. `package.json` 新增 `check:ignored`、`check:secrets`、`check:capabilities`。
+  9. 文档同步：SPEC-M00 → v1.3（§7 落地状态、§8 实际 CI 契约、新增 §8.1 固定 SHA 记录、变更记录）、`tasks/todo.md`、`README.md`、本文件。
+- 未完成内容：
+  - **CI 的远程首次运行没有发生**：无 PR、未推 `main`、Actions 未触发。因此工作流的 YAML 语法、Action SHA 是否可解析、四个 job 在真实 runner 上能否通过，**都还没有证据**。这一项不得被记为已验证。
+  - CI 的 `contracts` job 推迟到 T011（它需要 `pnpm contracts:generate` 与 `pnpm test:contracts`）。后果：**T011 之前 CI 不检查契约漂移**。当前 `packages/contracts` 是空壳，此刻无实际风险，但缺口有明确到期日。
+  - T011（契约内容）、T012（设置与密钥）未开始。
+- 关键文件：`.github/workflows/ci.yml`、`.gitleaks.toml`、`scripts/check-ignored.mjs`、`scripts/check-secrets.mjs`、`scripts/audit-capabilities.mjs`、`package.json`、`docs/specs/SPEC-M00-foundation-contracts.md`、`README.md`、`tasks/todo.md`、`PROJECT_STATUS.md`
+- 接口/Schema 变化：无
+- 数据迁移：无
+- ADR/决策：无新增 ADR。三项判断写入 Spec §8/§8.1 而非 ADR，因为它们都在已批准的 M00 范围内：`contracts` job 推迟、`workflow_dispatch` 增补、gitleaks 版本与许可证口径。
+- 验证命令与结果（全部真实退出码，本机执行）：
+  - `scripts/preflight.ps1 -RequireReady -NoJson -Quiet` → **0**
+  - `pnpm install --frozen-lockfile` → **0**
+  - `uv sync --locked --project services/ai-core` → **0**
+  - `uv lock --check --project services/ai-core` → **0**
+  - `pnpm contracts:check` → **0**
+  - `pnpm check:ignored` → **0**（8 条路径全部命中规则并打印出处；`.env.example` 未被忽略）
+  - `pnpm check:secrets` → **0**（gitleaks 8.30.1，`11 commits scanned`，`no leaks found`）
+  - `pnpm check:capabilities` → **0**（权限恰好 `core:default`）
+  - `pnpm lint` / `pnpm typecheck` / `pnpm test` / `pnpm build` → **0 / 0 / 0 / 0**（测试：vitest 75 + pytest 3 + cargo 2）
+  - `git diff --cached --check` → **0**
+  - Markdown 相对链接（自写脚本遍历）→ 18 个文件、31 条相对链接、**0 断链**
+  - `git status --short` → 仅本次改动，无临时产物入库
+- 失败关闭与有效性实测（不是推断）：
+  - `check:secrets` 的四条路径：`ci.yml` 版本漂移 → **exit 2**；gitleaks 缺失 → **exit 2**；本机版本不符 → **exit 2**；正常 → **exit 0**。
+  - 扫描有效性：在临时 git 仓库植入假凭据后，GitHub PAT（`ghp_` 前缀）与 `api_key = "..."` 均被检出（**exit 1**），证明该门禁不是空转。
+  - 扫描边界（如实记录）：AWS 规则要求 `AWS_ACCESS_KEY_ID`/`AWS_SECRET_ACCESS_KEY` 一类关键字上下文；一个孤立的 `AKIA...` 形态字符串**不会**命中——gitleaks 默认配置同样如此，与本仓库配置无关。故密钥扫描是真实门禁，但不是"扫过即安全"的保证。
+- 过程中发现并修正的既有错误文档：
+  - README 与 `PROJECT_STATUS.md` 原先声称"任何 `cargo build` / `cargo test` 之前都必须先有 `apps/desktop/dist`"。实测（`cargo clean -p engmentor-desktop` 后移走 `dist`）**clippy 与 `cargo build` 都不会因此失败**；缺 `dist` 的真实后果是产物不含前端资源、启动后没有界面。README 已改为准确表述，构建顺序建议（先 `build:web`）保留。此前那次 exit 101 的真实原因是缺 `icons/icon.ico`，与 `dist` 无关。
+- Eval/性能/Token 结果：不适用
+- 已知问题与风险：
+  - **CI 未被远程验证**（最重要的一条，见"未完成内容"）。
+  - **本机新增了软件**：gitleaks `8.30.1`（`winget install --id Gitleaks.Gitleaks --version 8.30.1 -e`，用户作用域，安装时校验了安装器哈希）。这是 `pnpm check:secrets` 的前置，已写入 README；卸载走 `winget uninstall`。gitleaks **没有**加入 `scripts/preflight.ps1`：缺失只影响 `check:secrets`，该脚本会自行给出安装指引并非零退出。
+  - gitleaks-action 采用商业 EULA（个人账号免费、组织账号需 `GITLEAKS_LICENSE`）。仓库当前属个人账号，故 CI 不需要该 secret；**若转为组织账号，`secrets` job 会失败**，必须先取得许可证。这条已记入 Spec §8，需要时登记到 M12 许可证清单。
+  - `Swatinem/rust-cache` 的 `workspaces` 必须显式指向 `apps/desktop/src-tauri`，否则默认找不到根目录的 `Cargo.lock` 而静默不缓存（已在工作流内注释）。
+  - 三个 Python 自检/工具命令仍必须在 `services/ai-core` 下执行；工作流用 `defaults.run.working-directory` 保证，这一点已在 CI 中固化，不受调用者 cwd 影响。
+  - gitleaks 版本升级会引入上游规则变化，可能报出旧版本没有的命中；升级必须"改脚本常量 + 改 `ci.yml` + 本机全量重扫"三件事同做（脚本会强制前两件）。
+- 环境或密钥要求：无需任何仓库 secret；未创建 `.env`。`secrets` job 仅用 GitHub 自动注入的 `GITHUB_TOKEN`。
+- 下一个 Agent 应先做：
+  1. **让用户在 Actions 页面手动触发一次 CI**（`workflow_dispatch`），确认四个 job 在真实 runner 上通过——这是 T010-B 唯一缺失的证据；若失败，按 job 名定位（这正是 job 拆分的目的）。
+  2. 之后按顺序执行 **T011**（契约 schema + 生成链路 + 三方一致性 fixtures + Rust 运行时校验，并**补齐 `contracts` job**），再 T012。
+
 ### 2026-09-19 — T010-A 纠错：ESLint 绕过、CSP 白名单、文档一致性（DONE）
 
 - Agent/负责人：ZCode（用户要求的三项 Required 修复）

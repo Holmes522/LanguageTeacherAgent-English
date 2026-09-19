@@ -28,20 +28,21 @@ EngMentor 是一款 **Windows 优先的本地桌面英语学习助手**。
 |---|---|
 | 产品与技术方案（统一方案） | 已完成并存档 |
 | T000 产品边界与技术决策（Q1–Q8） | 已完成，逐项由负责人确认 |
-| M00 工程设计 Spec（Monorepo、契约、CI） | v1.2，已复核通过 |
+| M00 工程设计 Spec（Monorepo、契约、CI） | v1.3，已复核通过 |
 | 工具链预检脚本（只读） | 已交付并运行（53 项测试通过） |
 | 开发工具链（Node / pnpm / uv / Python / Rust / MSVC / SDK） | **已安装、已固定版本，预检门禁通过** |
 | Monorepo 骨架（T010-A） | **已建立**：workspace、三个 lockfile、质量命令可运行 |
 | 源代码（React / Rust / Python） | **只有空骨架**：可构建、可测试，但没有任何教学功能 |
+| 本机安全自检（密钥扫描、敏感路径忽略、能力清单） | **已交付并在本机通过**（gitleaks 8.30.1） |
 | 版本化契约内容（JSON Schema 与生成类型） | **尚未创建**（T011） |
-| CI（GitHub Actions） | **尚未创建**（T010-B） |
+| CI（GitHub Actions） | **已创建，但从未在 GitHub 上运行过**（T010-B；契约 job 属 T011） |
 | Windows 安装包 | **尚未创建** |
 | 界面与截图 | **不存在**（骨架界面只显示"还没做什么"） |
 
 **能跑起来的只有开发流程，不是产品。** 现在可以执行安装依赖、静态检查、类型检查、测试与构建；
 但查词、语法、评分、导入等能力一个都没有实现。桌面壳启动后只会显示一张尚未实现的说明页。
 
-下一步（建设中）：建立 CI（T010-B）→ 落地版本化契约（T011）→ 设置与密钥存储骨架（T012）→ 风险验证（Spike）→ 按模块实现教学功能。
+下一步（建设中）：**在 GitHub 上实跑一次 CI**（工作流已提交，但至今没有任何一次远程运行记录，因此它的可用性尚未被证明）→ 落地版本化契约与契约 job（T011）→ 设置与密钥存储骨架（T012）→ 风险验证（Spike）→ 按模块实现教学功能。
 
 实时、权威的进度以 [`PROJECT_STATUS.md`](PROJECT_STATUS.md) 为准；本文件的状态表只能比它更粗，不能比它更乐观。
 
@@ -222,12 +223,33 @@ pnpm build         # 前端构建 + Rust 骨架构建
 pnpm contracts:check   # 契约目录结构与"生成尚未启用"状态
 ```
 
-请注意一个真实的顺序约束：Rust 侧通过 `tauri::generate_context!` 在**编译期嵌入前端产物**，
-所以任何 `cargo build` / `cargo test` 之前都必须先有 `apps/desktop/dist`。
-`pnpm build` 与 `pnpm test` 已经替你处理了这个顺序；单独调用 cargo 时请先跑 `pnpm build:web`。
+关于前端产物与 Rust 的顺序：Tauri 通过 `tauri::generate_context!` 在**编译期嵌入前端产物**。
+实测（`cargo clean -p engmentor-desktop` 后移走 `apps/desktop/dist`）clippy 与 `cargo build`
+**都不会因此失败**，但那样产出的程序里没有前端资源、启动后不会有界面。
+`pnpm build` 与 `pnpm test` 已经替你处理了顺序；单独调用 cargo 时请先跑 `pnpm build:web`。
 
 首次创建 lockfile 时使用的是非 fixed 模式（`pnpm install` / `uv sync` / `cargo generate-lockfile`），
 随后立刻用上面的 frozen/locked 命令复验——这是**首次建锁的例外**，之后所有安装都必须走 locked 模式。
+
+### 安全自检（T010-B 已在本机实测通过）
+
+```powershell
+pnpm check:secrets        # 敏感路径忽略规则 + gitleaks 全量历史扫描
+pnpm check:capabilities   # Tauri capability 白名单审计（SPEC-M00 §5.4 第 3 层）
+```
+
+`pnpm check:secrets` 要求本机装有与 CI **完全相同版本**的 gitleaks；版本不一致时它会拒绝扫描
+（退出码 2），而不是给出一个与 CI 不可比的结论。安装方式：
+
+```powershell
+winget install --id Gitleaks.Gitleaks --version 8.30.1 -e
+```
+
+安装后需要重开 shell（winget 修改的是用户 PATH）。若 gitleaks 装在别处，可用环境变量
+`GITLEAKS_BIN` 指向它。
+
+退出码语义：`0` 通过；`1` 确实发现了问题（疑似密钥、忽略规则不符）；`2` 检查本身没能按约定口径
+执行——三种情况互不混淆，`2` 不代表"安全"。
 
 ### 还没有的命令
 
@@ -236,7 +258,7 @@ pnpm contracts:check   # 契约目录结构与"生成尚未启用"状态
 | 生成并校验契约生成物 | 待 T011 完成后补充 |
 | 启动桌面应用（开发模式） | 待 M01 完成后补充 |
 | 打包 Windows 安装包 / 签名 | 待 T050 完成后补充 |
-| CI 流程（GitHub Actions） | 待 T010-B 完成后补充 |
+| CI 流程（GitHub Actions） | **工作流已提交，但从未在 GitHub 上运行过**；要验证需在 Actions 页面手动触发（`workflow_dispatch`）或开 PR |
 
 在对应任务落地并实测之前，README 不会写入这些命令。
 
@@ -252,8 +274,10 @@ LanguageTeacherAgent-English/
 ├─ .npmrc                        # peer 严格、不隐式装 peer、engine-strict
 ├─ .gitattributes                # 统一 LF，二进制类型显式标注
 ├─ .node-version / .env.example  # Node 版本固定 / 环境变量占位符（无真实值）
+├─ .gitleaks.toml                # 密钥扫描规则（本机与 CI 共用；当前不含任何例外）
 ├─ rust-toolchain.toml           # Rust 精确版本（1.98.1，MSVC host）
 ├─ eslint.config.mjs             # 含"WebView 不得直接访问外网"的边界规则
+├─ .github/workflows/ci.yml      # 最小 CI（web / python / rust / secrets，Action 固定 SHA）
 ├─ docs/
 │  ├─ 英语老师AI-Agent-统一产品与技术开发方案.md   # 唯一当前总方案
 │  ├─ specs/                     # 模块规格（当前：SPEC-M00）
@@ -263,7 +287,10 @@ LanguageTeacherAgent-English/
 │  ├─ preflight.ps1              # 只读工具链预检入口（可运行）
 │  ├─ lib/PreflightChecks.psm1   # 预检的检查逻辑
 │  ├─ tests/preflight.Tests.ps1  # 预检测试（Pester，53 项）
-│  └─ contracts-check.mjs        # 契约目录结构检查
+│  ├─ contracts-check.mjs        # 契约目录结构检查
+│  ├─ check-ignored.mjs          # 敏感路径是否被 .gitignore 覆盖
+│  ├─ check-secrets.mjs          # gitleaks 扫描（断言与 CI 同版本同配置）
+│  └─ audit-capabilities.mjs     # Tauri capability 白名单审计
 ├─ apps/desktop/                 # 桌面壳（Tauri 2 + React + Vite，骨架可构建）
 │  ├─ src/                       # React UI（只有一张"尚未实现"说明页）
 │  ├─ tests/                     # vitest：元信息 + tauri.conf.json 边界断言

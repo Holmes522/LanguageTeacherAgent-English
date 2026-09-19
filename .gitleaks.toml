@@ -1,0 +1,20 @@
+# EngMentor 密钥扫描配置（本机 `pnpm check:secrets` 与 CI 的 secrets job 共用）。
+#
+# 本文件当前**故意不含任何例外**：全量提交历史在 gitleaks 默认规则集下 0 命中，
+# 因此没有任何理由放宽规则。SPEC-M00 §8 要求"例外条目必须写明理由"——没有例外
+# 就是最诚实的写法，写入一条没有证据支持的 allowlist 只会削弱扫描。
+#
+# 若将来出现误报，请新增 [[allowlists]] 并在 description 里写清三件事：
+# 命中的是哪条规则、为什么它是误报、为什么不能用更精确的规则代替。
+#
+# 严禁在本文件里写入任何真实密钥形态的字符串——那等于把泄漏复制一份到配置里。
+# 严禁把本文件用作"让扫描通过"的手段：先确认真的是误报，再放行。
+
+title = "EngMentor gitleaks 配置"
+
+[extend]
+# 启用 gitleaks 内置规则集。这里固定的是 **gitleaks 版本**（见
+# scripts/check-secrets.mjs 的 PINNED_GITLEAKS_VERSION 与 .github/workflows/ci.yml
+# 的 GITLEAKS_VERSION，两者由脚本断言一致），而不是把规则快照复制进本文件——
+# 复制规则会让上游的规则改进永远无法到达本仓库。
+useDefault = true

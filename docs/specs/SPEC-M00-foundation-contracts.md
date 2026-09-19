@@ -3,8 +3,8 @@
 | 字段 | 值 |
 |---|---|
 | 模块 ID | `M00-foundation-contracts` |
-| Spec 版本 | v1.2（在 v1.1 基础上新增 README 文档基线验收项） |
-| 状态 | v1.1 已复核通过；v1.2 为文档基线增补，含 AC-15～AC-18 |
+| Spec 版本 | v1.3（新增 §8 CI 的落地契约与固定 SHA 记录，并记录 contracts job 的推迟） |
+| 状态 | v1.1 已复核通过；v1.2 为文档基线增补（AC-15～AC-18）；v1.3 为 §8 落地增补，验收标准未变 |
 | 日期 | 2026-09-19 |
 | 负责人 | ZCode（用户 Holmes 审阅） |
 | 依赖模块 | 无（M00 是所有模块的前置） |
@@ -294,8 +294,11 @@ B-4 不依赖单一机制，三层各自独立可测、任一失效仍不放开�
 | | `test:rust` | `cargo test --locked`（含 Rust 运行时 Schema 校验与 manifest 一致性） |
 | | `pnpm test:contracts` | 三方一致性：同一 fixtures 集合的 TS / Python / Rust 结论比对 |
 | Build | `pnpm build` | Web 静态构建 + Tauri 骨架构建 |
-| 安全自检 | `pnpm check:secrets` | 与 CI 同版本的 gitleaks + 同一 `.gitleaks.toml` |
-| 边界自检 | `pnpm check:capabilities` | 输出 Tauri capability 授权清单并与白名单比对 |
+| 安全自检 | `pnpm check:secrets` | 两段：敏感路径忽略规则（`scripts/check-ignored.mjs`）+ 与 CI 同版本的 gitleaks 全量历史扫描，同一 `.gitleaks.toml` |
+| 边界自检 | `pnpm check:capabilities` | 输出 Tauri capability 授权清单、capability 文件、Cargo 依赖与前端插件，并与白名单比对 |
+
+命令落地状态（T010-B）：`check:secrets`、`check:capabilities` 已实现，失败时以非 0 退出；`contracts:generate`
+与 `test:contracts` 属 T011，尚未存在。
 
 > **Python 命令为什么要先 `cd`（T010-A 实测结论）**：`uv run --project services/ai-core <tool>`
 > 会把**工作目录留在仓库根**。实测后果：
@@ -313,31 +316,85 @@ B-4 不依赖单一机制，三层各自独立可测、任一失效仍不放开�
 
 文件：`.github/workflows/ci.yml`
 
-- 触发：`push`（`main`）与 `pull_request`。
-- 权限：`permissions: contents: read`（最小）。
-- 并发：同一 ref 的新运行取消旧运行。
+- 触发：`push`（`main`）、`pull_request`，以及 **`workflow_dispatch`**。
+  `workflow_dispatch` 是 T010-B 的增补：本仓库当时既不允许创建 PR，也不允许推 `main`，若只有前两个触发器，
+  工作流将**没有任何一次远程运行记录**，等于交付一个从未被证明能跑的文件。手动触发让作者可以在
+  Actions 页面独立验证它，而不必先改变分支或 PR 的状态。
+- 权限：`permissions: contents: read`（最小）。该权限同时使 `secrets` job 拿到的 `GITHUB_TOKEN`
+  无法评论 PR，与 D-3 的"关闭 PR 评论"互为第二层保障。
+- 并发：同一 ref 的新运行取消旧运行（`cancel-in-progress`）。
 - Runner：`windows-latest`（Q2：Windows 首发）。macOS 不加入（P1）。
-- 密钥：**不需要任何 secret**。缺少 `DEEPSEEK_API_KEY` 时，需要真实 API 的测试必须 `skip` 而非 `fail`。
+- 密钥：**不需要任何 secret**。`secrets` job 只用 GitHub 自动注入的 `GITHUB_TOKEN`，它不是仓库 secret。
+  缺少 `DEEPSEEK_API_KEY` 时，需要真实 API 的测试必须 `skip` 而非 `fail`。
 
 | Job | 内容 | 阻塞 |
 |---|---|---|
-| `contracts` | 校验 JSON Schema → `pnpm contracts:generate` → `git diff --exit-code`（漂移即失败）→ 三方一致性测试 | 是 |
-| `web` | `pnpm install --frozen-lockfile` → `lint:web` → `typecheck:web` → `test:web` → `build`（Web 部分） | 是 |
-| `python` | `uv sync --locked` → `uv lock --check` → `ruff` → `mypy` → `pytest` | 是 |
-| `rust` | `cargo fmt --check` → `clippy -D warnings` → `cargo test --locked` → Tauri 骨架构建 | 是 |
-| `secrets` | gitleaks 固定完整 commit SHA；推送与 PR 均运行 | 是 |
+| `web` | `pnpm install --frozen-lockfile` → `lint:web` → `typecheck:web` → `test:web` → `build:web` → `check:capabilities` | 是 |
+| `python` | `uv sync --locked` → `uv lock --check` → `uv run ruff check .` → `uv run mypy` → `uv run pytest`（全部在 `services/ai-core` 下执行） | 是 |
+| `rust` | `pnpm build:web` → `pnpm lint:rust`（fmt + clippy）→ `cargo test --locked` → `pnpm build:rust` | 是 |
+| `secrets` | `node scripts/check-ignored.mjs` → gitleaks 全量历史扫描 | 是 |
+| `contracts` | **推迟到 T011**：本 job 需要 `pnpm contracts:generate` 与 `pnpm test:contracts`，两者都是 T011 的交付物 | 是（T011 起） |
+
+`contracts` job 推迟的后果必须明说：**在 T011 之前，CI 不检查契约漂移**。`packages/contracts` 当前是空壳
+（只有目录、README 与占位模块，没有任何 schema 或生成物），因此这一空档此刻不构成实际风险；但它是一个
+有明确到期日的缺口，T011 必须补齐，且不得在补齐前把 M00 的契约相关验收项标记为通过。
+
+### 8.1 三方 Action 的固定 SHA 记录
+
+所有 `uses` 都固定到 40 位 commit SHA，不使用浮动 tag；注释中保留对应的 tag 便于升级时核对。
+
+| Action | tag | 固定 SHA |
+|---|---|---|
+| `actions/checkout` | v7.0.1 | `3d3c42e5aac5ba805825da76410c181273ba90b1` |
+| `pnpm/action-setup` | v6.1.0 | `ea17c68df8912ef543352723c149a84f56e3d413` |
+| `actions/setup-node` | v7.0.0 | `820762786026740c76f36085b0efc47a31fe5020` |
+| `astral-sh/setup-uv` | v9.0.0 | `c771a70e6277c0a99b617c7a806ffedaca235ff9` |
+| `Swatinem/rust-cache` | v2.9.2 | `6323deb102c322ba6fcbdcafc7e3dddab59af2b6` |
+| `gitleaks/gitleaks-action` | v3.0.0 | `e0c47f4f8be36e29cdc102c57e68cb5cbf0e8d1e` |
+
+- 每个 SHA 都通过 `git ls-remote --tags` 取自上游 tag（annotated tag 取 `^{}` 指向的 commit）。
+- 升级必须是独立提交，并重新验证该 Action 的输入契约（本表所列版本已核对 `action.yml` 的 `inputs`：
+  `checkout` 有 `fetch-depth`/`persist-credentials`，`setup-node` 有 `node-version-file`/`cache`，
+  `pnpm/action-setup` 有 `version`，`setup-uv` 有 `version`/`enable-cache`/`cache-dependency-glob`，
+  `rust-cache` 有 `workspaces`）。
+- Rust 工具链**不引入额外 Action**：runner 自带 rustup，`rust-toolchain.toml` 会触发按精确版本安装
+  （含 rustfmt/clippy）。`Swatinem/rust-cache` 必须显式指定 `workspaces: apps/desktop/src-tauri`，
+  因为本仓库的 `Cargo.lock` 不在仓库根，默认路径会让缓存静默失效。
 
 gitleaks 约束（D-3）：
 
 - Action 引用**必须**是完整 commit SHA，不使用 `@v2` 之类浮动 tag。
-- 关闭 PR 评论、SARIF 上传、摘要等非必要能力，只保留退出码语义（具体参数名按固定版本的官方文档在 T010 实测确认）。
-- 本机 `pnpm check:secrets` 使用与 CI **相同版本**的 gitleaks 和同一个 `.gitleaks.toml`；脚本先断言本机版本与固定版本一致，不一致直接失败。
-- T010 记录所选 gitleaks 版本及其许可证，并登记到 M12 的许可证清单。
-- `.gitleaks.toml` 中的例外条目必须写明理由，禁止把真实密钥形态的字符串写进配置。
+- **固定版本：gitleaks `8.30.1`**，写在 `ci.yml` 的 `GITLEAKS_VERSION` 与
+  `scripts/check-secrets.mjs` 的 `PINNED_GITLEAKS_VERSION` 两处，并由后者逐字断言两者相同。
+- 关闭非必要能力（实测确认的参数名，见 gitleaks-action v3 官方 README）：
+  `GITLEAKS_ENABLE_COMMENTS=false`、`GITLEAKS_ENABLE_UPLOAD_ARTIFACT=false`、
+  `GITLEAKS_ENABLE_SUMMARY=false`；只保留退出码语义。
+- 许可证：gitleaks **CLI 为 MIT**；`gitleaks-action` 本身采用 GITLEAKS-ACTION END-USER LICENSE
+  AGREEMENT——**个人账号免费**，组织账号需要许可证密钥（`GITLEAKS_LICENSE`）。本仓库属个人账号，
+  因此工作流不引入该 secret；若仓库转为组织账号，这一步会要求它，必须在此之前取得许可证。
+- 本机 `pnpm check:secrets` 使用与 CI **相同版本**的 gitleaks 和同一个 `.gitleaks.toml`；脚本先断言本机
+  版本与固定版本一致，不一致直接拒绝扫描（退出码 2），而不是给出与 CI 不可比的结论。
+- 本机 gitleaks 的安装方式写入 README：`winget install --id Gitleaks.Gitleaks --version 8.30.1 -e`；
+  也可用 `GITLEAKS_BIN` 指向已有二进制。gitleaks **不是** `scripts/preflight.ps1` 的检查项——
+  缺少它只影响 `check:secrets`，而该脚本会自行给出安装指引并失败，不需要预检代劳。
+- 扫描范围是**全量提交历史**（`fetch-depth: 0`）：只扫最新一次提交会漏掉"曾提交、后来删除"的密钥，
+  那种情况下密钥仍在历史中，必须轮换。
+- `.gitleaks.toml` 当前**不含任何例外**（全量历史在默认规则下 0 命中），因此不需要为放行写理由。
+  若将来出现误报，例外条目必须写明：命中的规则、为何是误报、为何不能用更精确的规则替代。
+  禁止把真实密钥形态的字符串写进配置。
 
-缓存：`actions/setup-node`（pnpm）、`astral-sh/setup-uv`（uv cache）、Rust 构建缓存；三方 Action 全部固定 SHA。
+> 扫描能力的边界（T010-B 实测，不是推测）：gitleaks 的规则并非全部只看字符串形态。用植入的假凭据实测：
+> GitHub PAT（`ghp_` 前缀）与 `api_key = "..."` 这类写法会被检出（退出码 1），AWS 规则则要求出现
+> `AWS_ACCESS_KEY_ID`/`AWS_SECRET_ACCESS_KEY` 一类的**关键字上下文**，一个孤立的 `AKIA...` 形态字符串
+> 不会命中（默认配置同样如此，与本仓库的 `.gitleaks.toml` 无关）。因此密钥扫描是真实门禁，
+> **不是**"扫过就安全"的保证。
+
+缓存：`actions/setup-node`（pnpm）、`astral-sh/setup-uv`（uv cache）、`Swatinem/rust-cache`（Rust target）；
+三方 Action 全部固定 SHA。
 
 失败信息要求：CI 失败必须能直接区分 lint、类型、测试、契约漂移与密钥问题，不得只输出一个聚合退出码。
+job 按语言与关注点拆分即为此目的；`secrets` job 内又把"忽略规则"与"密钥扫描"拆成两个 step，
+使失败信息能直接指认是哪一类问题。
 
 ## 9. 安全边界
 
@@ -433,6 +490,7 @@ ENGM_EMBEDDING_MODEL=BAAI/bge-small-en-v1.5
 
 | 日期 | 版本 | 变更 | 作者 |
 |---|---|---|---|
+| 2026-09-19 | v1.3 | T010-B 落地增补：§8 增补 `workflow_dispatch` 触发（及理由）、四个可运行 job 的实际步骤、新增 §8.1 六条 Action 的固定 SHA 记录与升级要求、gitleaks 固定 `8.30.1` 与许可证说明（个人账号免费/组织需密钥）、忽略规则与密钥扫描拆为两步、实测的扫描能力边界；明确 `contracts` job 推迟到 T011 及其后果（T011 前 CI 不检查契约漂移）；§7 补两个自检命令的落地状态与覆盖范围 | ZCode |
 | 2026-09-19 | v1.2 | 新增 README 文档基线：`README.md` 纳入 M00 交付物与验收（AC-15 内部链接无断链、AC-16 状态与 `PROJECT_STATUS.md` 一致、AC-17 无虚构内容、AC-18 用户使用指南结构与发布门禁）；目录结构与实施顺序同步补充 README | ZCode |
 | 2026-09-19 | v1.1 | 按用户审阅结论修订：uv 命令 `--frozen` → `--locked`/`uv lock --check`；新增 §5.3 Rust 运行时 Schema 校验；Python 生成物改为可安装包 `engm-contracts`（禁止 PYTHONPATH）；新增 §5.4 WebView 无外网三层防护；§3.2 预检加入 MSVC/WebView2 与 §3.3 VBSCRIPT；落定 D-1～D-6；补 AC-7～AC-12；清理行尾空格 | ZCode |
 | 2026-09-19 | v1.0-draft | 初稿 | ZCode |

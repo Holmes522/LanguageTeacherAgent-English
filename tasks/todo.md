@@ -1,11 +1,11 @@
 # 英语老师 AI Agent 桌面客户端任务清单
 
-> 当前状态：T000 已完成（含 2026-09-19 GitHub 安全同步，`main` @ `ddd16be`）；M00 Spec v1.2 **已复核通过**（见 [`docs/specs/SPEC-M00-foundation-contracts.md`](../docs/specs/SPEC-M00-foundation-contracts.md)）；`T010-A`（Monorepo 骨架与可复现安装边界）**已完成并验证**——工具链已安装并固定、三个 lockfile 就绪、11 项验证命令全部通过；**`T010-B`（GitHub Actions CI）待做**。先完整阅读 [`PROJECT_STATUS.md`](../PROJECT_STATUS.md)。每完成一个模块或垂直切片，必须同步更新 `PROJECT_STATUS.md`。
+> 当前状态：T000 已完成（含 2026-09-19 GitHub 安全同步，`main` @ `ddd16be`）；M00 Spec v1.3 **已复核通过**（见 [`docs/specs/SPEC-M00-foundation-contracts.md`](../docs/specs/SPEC-M00-foundation-contracts.md)）；`T010-A`（Monorepo 骨架与可复现安装边界）与 `T010-B`（GitHub Actions 最小 CI）**已完成并在本机验证**；**`T011`（版本化本地契约）待做**。先完整阅读 [`PROJECT_STATUS.md`](../PROJECT_STATUS.md)。每完成一个模块或垂直切片，必须同步更新 `PROJECT_STATUS.md`。
 >
 > **执行顺序（2026-09-19 用户裁定）**：工具链预检与安装 → `M00（T010–T012）` → `T001–T005` 风险 Spike → `Checkpoint A` → Phase 2 及之后的业务模块。
 > 说明：M00 是 Spike 的载体（Spike 证据需要 Monorepo、CI、契约信封与锁文件才能复现），因此 **M00 先于 Spike**；本清单把原 Phase 0（Spike）与原 Phase 1（工程地基）合并为 **Phase 0**，Phase 2 起的编号与统一方案一致。`Checkpoint A` 只门控 Phase 2 及之后的业务模块，不再门控 T010–T012。
 >
-> 门控：新增依赖或修改数据 Schema 前需先获批准；T010-B 的 CI 需另行授权后再开始。
+> 门控：新增依赖或修改数据 Schema 前需先获批准；**CI 工作流已提交但从未在 GitHub 上运行过**，验证它需要在 Actions 页面手动触发（`workflow_dispatch`）或开 PR。
 
 ## Phase 0：工程地基与风险验证
 
@@ -13,9 +13,9 @@
 
 #### T010：创建 Monorepo 与 CI
 
-> **拆分**：`T010-A`（Monorepo 骨架与可复现安装边界）**已完成并验证**；`T010-B`（GitHub Actions 最小 CI）待做。
+> **拆分**：`T010-A`（Monorepo 骨架与可复现安装边界）与 `T010-B`（GitHub Actions 最小 CI）**均已完成并在本机验证**。
 
-> 状态：**T010-A 已完成**（骨架、三个 lockfile、根级质量命令全部实测通过）；**T010-B 未开始**（CI）。
+> 状态：**T010-A 已完成**（骨架、三个 lockfile、根级质量命令全部实测通过）；**T010-B 已完成**（工作流与两个自检脚本落地并在本机验证；**尚未在 GitHub 上运行过**，见下方验收说明）。
 
 - [x] 交付并运行工具链预检：入口 `scripts/preflight.ps1` + 检查模块 `scripts/lib/PreflightChecks.psm1` + Pester `scripts/tests/preflight.Tests.ps1`（53 项通过，为唯一自动化测试来源）。逐项结果见 `PROJECT_STATUS.md` §8。
   - 已加固：JSON 输出限定在 `tmp/preflight/` 内（越界路径退出码 2）；MSVC 要求 VC Tools + `link.exe` + Windows SDK 三项齐备；新增 winget 渠道检查（Info，不阻塞）；退出码 0/1/2/3 语义互不混淆。
@@ -25,13 +25,15 @@
 - [x] 安装 Windows SDK 并让 `msvc` 变为 OK：用户通过 Visual Studio Installer 完成。SDK `10.0.26100.0` 位于 `C:\Program Files (x86)\Windows Kits\10\`（`Include\`、`Lib\` 均存在，实测有 `windows.h` 与 `x64\kernel32.Lib`），VC 工具与 `link.exe` 来自已完成的 Build Tools 2022 实例（`17.14.37710.0`，VC 工具 `14.44.35207`）。**预检 `-RequireReady` 退出码 0**。
 - [x] 建立 Tauri/React、Python AI Core、contracts 和测试目录（`apps/desktop`、`services/ai-core`、`packages/contracts`）。
 - [x] 落地 `.gitattributes`（统一 LF）、`.npmrc`、`.env.example`、`eslint.config.mjs`、根 `package.json`、`pnpm-workspace.yaml`（`.node-version` 与 `rust-toolchain.toml` 前一步已完成）。
-- [ ] 落地 `.gitleaks.toml` 与 `pnpm check:secrets`（属于 T010-B 的安全 job）。
+- [x] 落地 `.gitleaks.toml`、`scripts/check-secrets.mjs`、`scripts/check-ignored.mjs` 与 `pnpm check:secrets`（T010-B）。配置文件**不含任何例外**；本机 gitleaks 固定 `8.30.1`，与 CI 的 `GITLEAKS_VERSION` 由脚本逐字断言，版本不符时拒绝扫描（退出码 2）。
+- [x] 落地 `scripts/audit-capabilities.mjs` 与 `pnpm check:capabilities`（SPEC-M00 §5.4 第 3 层、AC-9）：审计 capability 文件的权限白名单、`Cargo.toml` 的特权插件与前端 `@tauri-apps/plugin-*` 依赖，并打印完整授权清单。
 - [x] 配置三个权威 lockfile：`pnpm-lock.yaml`、`services/ai-core/uv.lock`、`apps/desktop/src-tauri/Cargo.lock`，并用 frozen/locked 模式复验。
-- [ ] **T010-B**：配置 GitHub Actions 最小 CI（contracts / web / python / rust / secrets 五个 job，`windows-latest`，零密钥依赖，三方 Action 固定完整 SHA）。
+- [x] **T010-B**：落地 `.github/workflows/ci.yml`（`web` / `python` / `rust` / `secrets` 四个 job，`windows-latest`，零密钥依赖，六条三方 Action 全部固定完整 SHA，触发器含 `push(main)` / `pull_request` / `workflow_dispatch`）。**`contracts` job 推迟到 T011**，因为它的两步命令（`pnpm contracts:generate`、`pnpm test:contracts`）都是 T011 的交付物。
+  - **验收说明（重要）**：工作流已提交并推送，但**从未在 GitHub 上运行过**——本仓库当时不允许创建 PR，也不允许推 `main`，而只有前两个触发器时不会有任何运行记录。因此 T010-B 在本机范围内可验证的部分（两个自检脚本、四条 job 用的全部命令）已验证；"CI 在 GitHub 上确实能跑通"这一项**尚未验证**，不得据此声称 CI 可用。
 - 预检现状（2026-09-19 SDK 就绪后，14 项 **ok=13 missing=0 unknown=1**，`VERDICT Ready`）：Git 2.51.0 / Node v22.20.0 / pnpm 12.4.2 / uv 0.12.17 / Python 3.12 / rustc 1.98.1 / cargo 1.98.1 / **msvc（VC 工具 14.44.35207 + link.exe + SDK 10.0.26100.0）** / Corepack 0.34.0 / rustup 1.29.1 / winget v1.29.290 / WebView2 153.0.4234.32；唯一 unknown 为 Advisory 级 vbscript（需提权查询，仅 MSI 前置项）。
-- 验收：Spec AC-1、AC-2、AC-6、AC-10、AC-12、AC-15、AC-16、AC-17、AC-18 通过；空骨架在 Windows CI 完整构建；README 与产品实际状态一致。
-- 验证：`pnpm install --frozen-lockfile`、`uv sync --locked --project services/ai-core`、`uv lock --check --project services/ai-core`、`cargo build --locked`；`pnpm lint`、`pnpm typecheck`、`pnpm test`、`pnpm build` 全绿。
-- 依赖：M00 Spec v1.2（已复核通过）+ 工具链预检**已全部就绪**（`-RequireReady` 退出码 0）。
+- 验收：Spec AC-1、AC-2、AC-6、AC-9、AC-10、AC-12、AC-15、AC-16、AC-17、AC-18 通过；两个自检脚本本机通过；README 与产品实际状态一致。**CI 在 GitHub 上的首次真实运行仍待完成**（需手动触发或开 PR）。
+- 验证：`pnpm install --frozen-lockfile`、`uv sync --locked --project services/ai-core`、`uv lock --check --project services/ai-core`、`cargo build --locked`；`pnpm lint`、`pnpm typecheck`、`pnpm test`、`pnpm build`、`pnpm contracts:check`、`pnpm check:secrets`、`pnpm check:capabilities` 全绿。
+- 依赖：M00 Spec v1.3（已复核通过）+ 工具链预检**已全部就绪**（`-RequireReady` 退出码 0）。
 
 #### T011：实现版本化本地契约
 
@@ -40,7 +42,8 @@
 - [ ] Python 生成物落在可安装包 `engm-contracts`（`packages/contracts/python/`），由 uv path 依赖消费，禁止 `PYTHONPATH` 技巧。
 - [ ] 落地 Rust 运行时 Schema 校验：覆盖 WebView↔Rust 与 Rust↔Python 四条边的双向校验，失败返回 `ENGM.CONTRACT.SCHEMA_INVALID`；`schema-manifest.json` 嵌入一致性测试。
 - [ ] TS / Python / Rust 三方使用同一组正反例 fixtures，结论必须一致。
-- 验收：Spec AC-3、AC-4、AC-5、AC-7、AC-8 通过。
+- [ ] **补齐 CI 的 `contracts` job**（T010-B 明确推迟到这里）：校验 JSON Schema → `pnpm contracts:generate` → `git diff --exit-code`（漂移即失败）→ `pnpm test:contracts`。在它落地前，CI 不检查契约漂移。
+- 验收：Spec AC-3、AC-4、AC-5、AC-7、AC-8 通过；CI 的 `contracts` job 在 GitHub 上真实跑通。
 - 验证：`pnpm contracts:check`、`pnpm test:contracts`、`cargo test --locked`。
 - 依赖：T010。
 

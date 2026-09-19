@@ -1,0 +1,180 @@
+# SPEC-M00 §8 的最小 CI：Windows runner、零密钥依赖、三方 Action 全部固定到完整 commit SHA。
+#
+# 为什么所有 Action 都写 40 位 SHA 而不是 @v7：浮动 tag 可以被上游移动，也能被账号
+# 接管后重新指向恶意提交；固定 SHA 让"上游变了"变成一次显式的、可评审的改动。
+# 每条 uses 后面的注释标出该 SHA 对应的 tag 与来源仓库，便于人工核对与升级。
+#
+# 为什么没有 contracts job：该 job 需要 pnpm contracts:generate 与 pnpm test:contracts，
+# 两者都是 T011 的交付物（packages/contracts 目前是空壳）。本轮只落能真实跑起来的 job，
+# 不放一个永远跑不通的占位 job。契约漂移检查随 T011 一起加进来。
+
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  # 手动触发：新增或修改工作流后，可以在 Actions 页面直接验证它能否跑通，
+  # 不必先合并到 main，也不必先开 PR。这是"CI 在合入前就经过实测"的前提。
+  workflow_dispatch:
+
+# 最小权限：CI 只读仓库内容。secrets job 的 GITHUB_TOKEN 因此也无法评论 PR，
+# 这与 D-3"禁用 PR 评论"的要求互为第二层保障。
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  # 三个版本与仓库内的固定文件保持一致；gitleaks 的版本还被
+  # scripts/check-secrets.mjs 逐字断言，改这里而不同步脚本会让本机扫描拒绝执行。
+  PNPM_VERSION: 12.4.2
+  UV_VERSION: 0.12.17
+  GITLEAKS_VERSION: 8.30.1
+
+jobs:
+  web:
+    name: web (eslint / tsc / vitest / vite build)
+    runs-on: windows-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
+        with:
+          version: ${{ env.PNPM_VERSION }}
+
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version-file: .node-version
+          cache: pnpm
+
+      - name: 安装依赖（locked，不允许改写 lockfile）
+        run: pnpm install --frozen-lockfile
+
+      - name: ESLint（含 WebView 网络边界规则）
+        run: pnpm lint:web
+
+      - name: 类型检查
+        run: pnpm typecheck:web
+
+      - name: 单元测试
+        run: pnpm test:web
+
+      - name: 前端构建
+        run: pnpm build:web
+
+      - name: 能力清单审计（SPEC-M00 §5.4 第 3 层）
+        run: pnpm check:capabilities
+
+  python:
+    name: python (ruff / mypy / pytest)
+    runs-on: windows-latest
+    timeout-minutes: 20
+    defaults:
+      run:
+        # 所有 Python 工具都必须在项目目录下执行：uv run --project 会把 cwd 留在仓库根，
+        # mypy 因此读不到 [tool.mypy]，pytest 会忽略 [tool.pytest.ini_options]。
+        # 详见 SPEC-M00 §7 与 services/ai-core/README.md。
+        working-directory: services/ai-core
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: astral-sh/setup-uv@c771a70e6277c0a99b617c7a806ffedaca235ff9 # v9.0.0
+        with:
+          version: ${{ env.UV_VERSION }}
+          enable-cache: true
+          cache-dependency-glob: services/ai-core/uv.lock
+
+      - name: 安装锁定依赖
+        run: uv sync --locked
+
+      - name: 断言 uv.lock 与 pyproject.toml 一致
+        run: uv lock --check
+
+      - name: 确认实际解释器版本（.python-version 生效）
+        run: uv run python -V
+
+      - name: Ruff
+        run: uv run ruff check .
+
+      - name: mypy（严格）
+        run: uv run mypy
+
+      - name: pytest
+        run: uv run pytest
+
+  rust:
+    name: rust (fmt / clippy / test / build)
+    runs-on: windows-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
+        with:
+          version: ${{ env.PNPM_VERSION }}
+
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version-file: .node-version
+          cache: pnpm
+
+      # 本仓库的 Cargo.lock 在 apps/desktop/src-tauri 下，rust-cache 默认只看仓库根，
+      # 因此必须显式告知工作区位置，否则缓存会静默不生效。
+      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
+        with:
+          workspaces: apps/desktop/src-tauri
+
+      - name: 安装 Node 依赖（Rust 侧需要先有前端产物）
+        run: pnpm install --frozen-lockfile
+
+      - name: 构建前端产物
+        run: pnpm build:web
+
+      - name: cargo fmt + clippy
+        run: pnpm lint:rust
+
+      - name: cargo test
+        run: cargo test --manifest-path apps/desktop/src-tauri/Cargo.toml --locked
+
+      - name: Tauri 骨架构建
+        run: pnpm build:rust
+
+  secrets:
+    name: secrets (gitleaks / 忽略规则)
+    runs-on: windows-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          # 密钥扫描必须看到完整历史：只扫最新一次提交会漏掉"曾经提交过、后来删掉"的密钥，
+          # 那种情况下密钥仍然存在于历史里，必须轮换。
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: 敏感路径的忽略规则（AC-10 后半，只需要 Node）
+        run: node scripts/check-ignored.mjs
+
+      - name: gitleaks 扫描（全量历史）
+        # gitleaks-action v3 只是把运行时从 Node 20 换到 Node 24，输入与行为与 v2 一致。
+        # 个人账号不需要 GITLEAKS_LICENSE；若本仓库将来转为组织账号，这一步会要求它。
+        # 三项额外的能力按 D-3 全部关闭，只保留退出码语义。
+        uses: gitleaks/gitleaks-action@e0c47f4f8be36e29cdc102c57e68cb5cbf0e8d1e # v3.0.0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITLEAKS_VERSION: ${{ env.GITLEAKS_VERSION }}
+          GITLEAKS_CONFIG: .gitleaks.toml
+          # 这三个值显式加引号：不引号会被 YAML 解析成布尔 false，再由 GitHub 转成字符串，
+          # 多一层类型转换就多一处无法在本机验证的猜测。字面字符串是唯一确定的写法。
+          GITLEAKS_ENABLE_COMMENTS: "false"
+          GITLEAKS_ENABLE_UPLOAD_ARTIFACT: "false"
+          GITLEAKS_ENABLE_SUMMARY: "false"
