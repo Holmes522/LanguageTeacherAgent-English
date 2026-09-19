@@ -252,7 +252,14 @@
 - 验证：本次为文档调整，无代码改动；`git diff --check` 与 Markdown 链接检查通过。
 - 下一个 Agent 应先做：
   1. 先读 `PROJECT_STATUS.md`（本记录 + §3 + §8）与 `tasks/todo.md`，**不要再把 CI/发布门禁当成当前重点**。
-  2. 与用户确认"本机可用"的最小范围：是**先做 T012（凭据配置）+ 一个最小可见能力**，还是直接做 M01（桌面壳可启动）+ M03（DeepSeek 打通）。
+  2. **目标已由用户 2026-09-19 确认**：「能在本机配置好 DeepSeek 凭据、让应用真的能用起来」——即凭据配置是必经环节，不是可选项。因此不再需要向用户确认这一点。
+  3. **建议的最薄可用路径（一条垂直切片，不是三个完整模块）**：
+     - **凭据**：T012 的最小版本 —— 设置界面录入 + 存进 OS 凭据存储（Q5 的 opt-in 同意一次，不可省，它是已批准决策）。
+     - **Sidecar 起得来**：ai-core 暴露 `127.0.0.1` 随机端口 + 内存 token（SPEC B-1/B-2）。
+     - **Rust 代理**：注册第一个 Tauri command，把请求转发给 Sidecar，并在两条边界上用 T011 已建好的校验器验信封 —— 这也是 `src-tauri/src/contracts.rs` 上那个 `#[allow(dead_code)]` 的**移除条件**（首个 IPC 命令落地即须删掉该注解）。
+     - **一次真实回答**：M03 的最小版本，流式返回并渲染。
+     - **可以推迟**：PyInstaller 打包 Sidecar（原 T001 的最大风险项）。用户当前是唯一使用者，开发期用 `uv run` 起 Sidecar 即可；**但打包风险不会消失**，一旦要分发给他人就必须回到它。
+     - **不可推迟**：CSP / capability / ESLint 三层边界；密钥不进 Git/日志/SQLite/WebView；`main` 不直接推送。
   3. 动手前先跑 `pnpm install --frozen-lockfile`、`pnpm preflight:gate`，确认本机环境仍然就绪。
 ### 2026-09-19 — 首次真实 CI 运行与两项修正（DONE；CI 已在 GitHub 上跑过）
 
