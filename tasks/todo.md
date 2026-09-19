@@ -13,14 +13,15 @@
 
 #### T010：创建 Monorepo 与 CI
 
-> 状态：**进行中，未完成**。第一小步（工具链预检）已交付；安装、骨架、锁文件与 CI 均未开始。
+> 状态：**进行中，未完成**。第一小步（工具链预检）已交付并按 `T010-preflight-fix` 重构加固；安装、骨架、锁文件与 CI 均未开始。
 
-- [x] 交付并运行工具链预检：`scripts/preflight.ps1` + `scripts/tests/preflight.Tests.ps1`（Pester 29 项通过，自检 28 项通过）。逐项结果见 `PROJECT_STATUS.md` §8。
-- [ ] **安装并固化版本**（等待用户确认安装方案）：pnpm、uv、Python 3.12、Rust（`rust-toolchain.toml` 提交精确版本号，不得只写 `stable`）、MSVC C++ Build Tools；安装后重跑预检至 Blocking 全绿。
+- [x] 交付并运行工具链预检：入口 `scripts/preflight.ps1` + 检查模块 `scripts/lib/PreflightChecks.psm1` + Pester `scripts/tests/preflight.Tests.ps1`（50 项通过，为唯一自动化测试来源）。逐项结果见 `PROJECT_STATUS.md` §8。
+  - 已加固：JSON 输出限定在 `tmp/preflight/` 内（越界路径退出码 2）；MSVC 要求 VC Tools + `link.exe` + Windows SDK 三项齐备；新增 winget 渠道检查（Info，不阻塞）；退出码 0/1/2/3 语义互不混淆。
+- [ ] **安装并固化版本**（等待用户确认安装方案）：pnpm、uv、Python 3.12、Rust（`rust-toolchain.toml` 提交精确版本号，不得只写 `stable`）、MSVC C++ Build Tools；安装后重跑预检至 Blocking 全绿（`-RequireReady` 退出码 0）。
 - [ ] 建立 Tauri/React、Python AI Core、contracts 和测试目录。
 - [ ] 落地 `.gitattributes`（统一 LF）、`.node-version`、`.npmrc`、`.env.example`、`.gitleaks.toml`。
 - [ ] 配置 pnpm、uv、Rust 锁文件与 GitHub Actions 最小 CI（5 个 job，Windows runner）。
-- 预检现状（2026-09-19）：已就绪 Git 2.51.0 / Node v22.20.0 / npm 10.9.3 / Corepack 0.34.0 / WebView2 153.0.4234.32；缺失 pnpm、uv、Python 3.12、rustc、cargo；无法判定 msvc（无 `vswhere.exe`）与 vbscript（需提权，且仅为 MSI 前置项）。
+- 预检现状（2026-09-19，14 项 ok=6 missing=6 unknown=2）：已就绪 Git 2.51.0 / Node v22.20.0 / npm 10.9.3 / Corepack 0.34.0 / winget v1.29.290 / WebView2 153.0.4234.32；缺失 pnpm、uv、Python 3.12、rustc、cargo；无法判定 msvc（无 `vswhere.exe`）与 vbscript（需提权，且仅为 MSI 前置项）。
 - 验收：Spec AC-1、AC-2、AC-6、AC-10、AC-12 通过；空骨架在 Windows CI 完整构建。
 - 验证：`pnpm install --frozen-lockfile`、`uv sync --locked --project services/ai-core`、`uv lock --check --project services/ai-core`、`cargo build --locked`；`pnpm lint`、`pnpm typecheck`、`pnpm test`、`pnpm build` 全绿。
 - 依赖：M00 Spec v1.1（已复核通过）+ 工具链预检（已运行；安装待确认）。
