@@ -304,6 +304,11 @@
 - `pnpm check:secrets` → **0**；`pnpm check:capabilities` → **0**
 - **Rust↔Python 真实集成测试**（会真的起 Sidecar 进程）→ **6/6 通过**：
   `cargo test --manifest-path apps/desktop/src-tauri/Cargo.toml -- --ignored`
+- **文档里写给用户的那条启动命令验证过**：`cd apps/desktop && pnpm tauri dev` →
+  Vite 在 `http://localhost:5173` 起来（HTTP 200，返回 index.html），`engmentor-desktop.exe`
+  进程存活、stdout/stderr 无任何错误输出；结束时不残留进程、5173 端口释放。
+  （README 的「从源码运行」一节写的正是这条命令，因此它必须被实测过而不是照抄。）
+- 直接运行编译产物 `target/debug/engmentor-desktop.exe` 亦能启动并正常退出，无错误输出。
 
 #### 集成测试证明了什么（这些是单测证明不了的）
 
