@@ -252,6 +252,17 @@ Windows 编译环境同样已就绪：MSVC 链接器 `link.exe` 与 Windows SDK 
 
 ### 目前可以运行的命令（已实际验证）
 
+> **下面所有命令都是 Windows PowerShell 语法，请逐行执行。**
+> Windows PowerShell 5.1 **不支持 `&&`**（那是 PowerShell 7 / bash 的写法），也**不支持 `cd /d`**
+> （那是 cmd.exe 的写法）。因此本文档一律把多步操作写成独立的一行，请不要把它们合成一行。
+> `cd` 在 PowerShell 里可以直接跟路径，例如 `cd G:\LanguageTeacherAgent-English\apps\desktop`。
+> 若提示"无法将 xxx 项识别为 cmdlet"，是因为 pnpm / uv / gitleaks 由 winget 装在用户作用域、
+> 没有进入当前 shell 的 PATH，先刷新一次：
+>
+> ```powershell
+> $env:Path = [Environment]::GetEnvironmentVariable('Path','Machine') + ';' + [Environment]::GetEnvironmentVariable('Path','User')
+> ```
+
 只读环境盘点，不安装任何东西、不修改任何配置：
 
 ```powershell
@@ -355,7 +366,7 @@ winget install --id Gitleaks.Gitleaks --version 8.30.1 -e
 
 | 目的 | 状态 |
 |---|---|
-| 启动桌面应用（开发模式） | **已可用**：`cd apps/desktop && pnpm tauri dev`（见上） |
+| 启动桌面应用（开发模式） | **已可用**：在 `apps/desktop` 目录下执行 `pnpm tauri dev`（见上文「从源码运行」） |
 | 打包 Windows 安装包 / 签名 | 待 T050 完成后补充；**Sidecar 打包（PyInstaller）也未做**，因此现在只能在本机运行 |
 | 分发 Sidecar 给他人 | 未做。当前 Rust 侧直接使用源码树里的 venv；release 构建不含开发机路径，会拒绝启动并给出指引 |
 | CI 流程（GitHub Actions） | 已跑通（[run #2](https://github.com/Holmes522/LanguageTeacherAgent-English/actions/runs/35431617828)，5/5）。按用户要求**只在关键时刻触发**：手动 Run workflow / 合并进 `main` / 把 draft PR 标记为 ready；纯文档改动不触发。手动触发需先把工作流合进 `main` 才会出现在 Actions 列表 |
